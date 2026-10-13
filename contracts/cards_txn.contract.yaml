@@ -1,0 +1,21 @@
+name: cards_txn
+source: cards_txn
+target_layer: silver
+target_table: cards_txn
+primary_key: txn_id
+columns:
+  - { name: txn_id,      type: string }
+  - { name: card_id,     type: string }
+  - { name: customer_id, type: string }
+  - { name: account_no,  type: string }
+  - { name: amount,      type: decimal }
+  - { name: ccy,         type: string }
+  - { name: merchant,    type: string }
+  - { name: mcc,         type: string }
+  - { name: txn_ts,      type: timestamp }
+  - { name: status,      type: string }
+not_null: [txn_id, customer_id, amount]
+allowed:
+  status: [POSTED, REVERSAL, PENDING, DECLINED]
+pii:
+  account_no: tokenize

@@ -1,0 +1,16 @@
+# Lakeflow Declarative Pipeline for the core medallion.
+resources:
+  pipelines:
+    core_medallion:
+      name: bank-core-medallion
+      catalog: ${var.catalog}
+      schema: silver
+      development: true
+      continuous: false
+      channel: CURRENT
+      libraries:
+        - notebook:
+            path: ../pipelines/core_pipeline.py
+      configuration:
+        bank.catalog: ${var.catalog}
+        bank.landing: /Volumes/${var.catalog}/landing/feeds

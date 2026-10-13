@@ -1,0 +1,24 @@
+name: customer
+source: customer
+target_layer: silver
+target_table: customer
+primary_key: customer_id
+columns:
+  - { name: customer_id,  type: string }
+  - { name: party_id,     type: string }
+  - { name: full_name,    type: string }
+  - { name: dob,          type: date }
+  - { name: email,        type: string }
+  - { name: phone,        type: string }
+  - { name: segment,      type: string }
+  - { name: country,      type: string }
+  - { name: kyc_status,   type: string }
+  - { name: onboard_date, type: date }
+not_null: [customer_id, segment, country]
+allowed:
+  segment: [RETAIL, MASS, AFFLUENT, SME, CORP]
+  kyc_status: [VERIFIED, PENDING, REJECTED]
+pii:
+  full_name: mask
+  email: tokenize
+  phone: mask

@@ -1,0 +1,61 @@
+# Nightly load: bootstrap → bronze → silver → gold → reconcile.
+resources:
+  jobs:
+    bank_daily_load:
+      name: bank_daily_load
+      tags:
+        project: banking-lakehouse-reference
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+      job_clusters:
+        - job_cluster_key: bank_cluster
+          new_cluster:
+            spark_version: 15.4.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 2
+      tasks:
+        - task_key: bootstrap
+          job_cluster_key: bank_cluster
+          notebook_task:
+            notebook_path: ../notebooks/00_bootstrap.py
+            base_parameters:
+              catalog: ${var.catalog}
+        - task_key: bronze
+          job_cluster_key: bank_cluster
+          depends_on:
+            - task_key: bootstrap
+          notebook_task:
+            notebook_path: ../notebooks/10_bronze_ingest.py
+            base_parameters:
+              catalog: ${var.catalog}
+        - task_key: silver
+          job_cluster_key: bank_cluster
+          depends_on:
+            - task_key: bronze
+          notebook_task:
+            notebook_path: ../notebooks/20_silver_conform.py
+            base_parameters:
+              catalog: ${var.catalog}
+        - task_key: gold
+          job_cluster_key: bank_cluster
+          depends_on:
+            - task_key: silver
+          notebook_task:
+            notebook_path: ../notebooks/30_gold_marts.py
+            base_parameters:
+              catalog: ${var.catalog}
+        - task_key: reconcile
+          job_cluster_key: bank_cluster
+          depends_on:
+            - task_key: gold
+          notebook_task:
+            notebook_path: ../notebooks/90_reconcile.py
+            base_parameters:
+              catalog: ${var.catalog}
+      email_notifications:
+        on_failure:
+          - bank-dataops@example.com
+      # schedule:
+      #   quartz_cron_expression: "0 0 2 * * ?"
+      #   timezone_id: UTC
