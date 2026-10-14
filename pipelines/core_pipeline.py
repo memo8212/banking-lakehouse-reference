@@ -37,6 +37,15 @@ def bronze_cards_txn():
             .withColumn("_ingested_at", F.current_timestamp())
             .withColumn("_source_file", F.lit("cards_txn.csv")))
 
+@dp.table(name="bronze_payments", comment="raw payments feed")
+def bronze_payments():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/payments")
+            .load(f"{LANDING}/payments")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("payments.csv")))
+
 # COMMAND ----------
 
 # MAGIC %md ## Silver — conformed + masked + quality expectations
@@ -60,6 +69,17 @@ def silver_cards_txn():
             .withColumn("status", F.upper(F.trim("status")))
             .withColumn("account_no", F.substring(F.sha2("account_no", 256), 1, 16)))
 
+@dp.table(name="silver_payments", comment="conformed payments")
+@dp.expect_or_drop("valid_status", "status IN ('SETTLED','PENDING','REJECTED','RETURNED')")
+@dp.expect_or_drop("valid_direction", "direction IN ('DEBIT','CREDIT')")
+def silver_payments():
+    return (dp.read_stream("bronze_payments")
+            .withColumn("amount", F.col("amount").cast("double"))
+            .withColumn("status", F.upper(F.trim("status")))
+            .withColumn("direction", F.upper(F.trim("direction")))
+            .withColumn("account_no", F.substring(F.sha2("account_no", 256), 1, 16))
+            .withColumn("counterparty", F.concat(F.substring("counterparty", 1, 1), F.lit("***"))))
+
 # COMMAND ----------
 
 # MAGIC %md ## Gold — materialized views (marts)
@@ -80,3 +100,20 @@ def gold_card_spend_by_segment():
     return (posted.join(cust.select("customer_id", "segment"), "customer_id", "left")
             .groupBy("segment").agg(F.round(F.sum("amount"), 2).alias("spend"),
                                     F.count("txn_id").alias("txns")))
+
+@dp.materialized_view(name="gold_payments_flow", comment="payments flow by channel/direction")
+def gold_payments_flow():
+    settled = dp.read("silver_payments").filter(F.col("status") == "SETTLED")
+    return (settled.withColumn("month", F.date_format(F.current_date(), "yyyy-MM"))
+            .groupBy("channel", "direction", "month")
+            .agg(F.round(F.sum("amount"), 2).alias("amount_base"),
+                 F.count("payment_id").alias("payments")))
+
+@dp.materialized_view(name="gold_payments_by_segment", comment="payments by segment")
+def gold_payments_by_segment():
+    cust = dp.read("silver_customer")
+    settled = dp.read("silver_payments").filter(F.col("status") == "SETTLED")
+    return (settled.join(cust.select("customer_id", "segment"), "customer_id", "left")
+            .groupBy("segment", "payment_type")
+            .agg(F.round(F.sum("amount"), 2).alias("amount_base"),
+                 F.count("payment_id").alias("payments")))

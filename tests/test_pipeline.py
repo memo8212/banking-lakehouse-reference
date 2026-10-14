@@ -19,8 +19,12 @@ def test_medallion_end_to_end(tmp_path, spark):
     result = run(spark, env)
 
     assert result["bronze"]["customer"] > 0
+    assert result["bronze"]["payments"] > 0
     assert result["silver"]["customer"]["good_rows"] > 0
+    assert result["silver"]["payments"]["good_rows"] > 0
     assert result["gold"]["customer_360"] > 0
+    assert result["gold"]["payments_flow"] > 0
     assert all(r["status"] == "PASSED" for r in result["recon"]), result["recon"]
     # quarantine works: some bad rows were rejected
     assert result["silver"]["customer"]["rejected_rows"] > 0
+    assert result["silver"]["payments"]["rejected_rows"] > 0

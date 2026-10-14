@@ -9,7 +9,7 @@ from lakehouse.config import Env
 def reconcile(spark, env: Env) -> list[dict]:
     results: list[dict] = []
 
-    for name in ("customer", "cards_txn"):
+    for name in ("customer", "cards_txn", "payments"):
         src = spark.read.option("header", True).csv(f"{env.source_dir}/{name}.csv").count()
         brz = spark.read.format("delta").load(env.table("bronze", name)).count()
         results.append({"check": f"{name}: source vs bronze row-count",
@@ -25,6 +25,17 @@ def reconcile(spark, env: Env) -> list[dict]:
     results.append({"check": "gold total_spend vs silver posted amount_base",
                     "status": "PASSED" if ok else "FAILED",
                     "expected": round(float(s_sum), 2), "actual": round(float(g_sum), 2)})
+
+    # payments: gold flow total vs silver settled amount_base
+    pay_silver = (spark.read.format("delta").load(env.table("silver", "payments"))
+                  .filter(F.col("status") == "SETTLED"))
+    pay_gold = spark.read.format("delta").load(env.table("gold", "payments_flow"))
+    ps = pay_silver.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
+    pg = pay_gold.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
+    pok = abs(float(ps) - float(pg)) < 0.01
+    results.append({"check": "gold payments_flow vs silver settled amount_base",
+                    "status": "PASSED" if pok else "FAILED",
+                    "expected": round(float(ps), 2), "actual": round(float(pg), 2)})
 
     results.append({"check": "silver customer rejects (<=5% tolerance)",
                     "status": "PASSED", "expected": "n/a",

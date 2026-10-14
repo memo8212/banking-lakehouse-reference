@@ -4,7 +4,7 @@ from lakehouse.contracts import load_contracts, validate
 
 def test_load_contracts():
     contracts = load_contracts()
-    assert {"customer", "cards_txn"} <= set(contracts)
+    assert {"customer", "cards_txn", "payments"} <= set(contracts)
     c = contracts["customer"]
     assert c.primary_key == "customer_id"
     assert c.pii["email"] == "tokenize"
@@ -16,6 +16,11 @@ def test_load_contracts():
     assert t.primary_key == "txn_id"
     assert "status" in t.allowed
     assert t.pii["account_no"] == "tokenize"
+
+    p = contracts["payments"]
+    assert p.primary_key == "payment_id"
+    assert "direction" in p.allowed and "channel" in p.allowed
+    assert p.pii["counterparty"] == "mask"
 
 
 def test_validate_detects_missing_and_bad_values(spark):

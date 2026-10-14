@@ -79,10 +79,44 @@ def gen_fx(path: Path) -> None:
             w.writerow([c, r])
 
 
+PAY_TYPES = ["SWIFT", "SEPA", "EFT", "WIRE", "INTERNAL"]
+CHANNELS = ["MOBILE", "ONLINE", "BRANCH", "ATM", "API"]
+PAY_STATUS = ["SETTLED", "SETTLED", "SETTLED", "PENDING", "REJECTED", "RETURNED"]
+CP = ["ACME LTD", "GLOBEX", "INITECH", "UMBRELLA CORP", "WAYNE ENT"]
+
+
+def gen_payments(path: Path, n_customers: int = 2000, n: int = 15000, seed: int = 13) -> None:
+    rng = random.Random(seed)
+    start = datetime(2026, 1, 1)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["payment_id", "customer_id", "account_no", "direction", "amount",
+                    "ccy", "payment_type", "channel", "counterparty",
+                    "beneficiary_country", "status", "value_date", "created_ts"])
+        for i in range(1, n + 1):
+            cid = rng.randint(1, n_customers)
+            ts = start + timedelta(seconds=rng.randrange(31 * 86400))
+            w.writerow([
+                f"PAY{i:09d}", f"C{cid:07d}", f"ACC{rng.randint(1, 5000):08d}",
+                rng.choice(["DEBIT", "CREDIT"]), round(rng.uniform(10, 50000), 2),
+                rng.choice(CCYS), rng.choice(PAY_TYPES), rng.choice(CHANNELS),
+                rng.choice(CP), rng.choice(COUNTRIES),
+                "BOGUS" if i % 1000 == 0 else rng.choice(PAY_STATUS),
+                ts.date().isoformat(), ts.strftime("%Y-%m-%d %H:%M:%S"),
+            ])
+        # a few null-customer rows (quarantined)
+        for j in range(10):
+            w.writerow([f"PAYBAD{j:05d}", "", f"ACC9{j:07d}", "DEBIT", 100.0, "CAD",
+                        "EFT", "ONLINE", "ACME LTD", "CA", "SETTLED",
+                        "2026-01-15", "2026-01-15 10:00:00"])
+
+
 if __name__ == "__main__":
     gen_customers(DATA / "customer.csv")
     gen_cards(DATA / "cards_txn.csv")
+    gen_payments(DATA / "payments.csv")
     gen_fx(DATA / "fx_rates.csv")
     print("wrote", DATA / "customer.csv")
     print("wrote", DATA / "cards_txn.csv")
+    print("wrote", DATA / "payments.csv")
     print("wrote", DATA / "fx_rates.csv")

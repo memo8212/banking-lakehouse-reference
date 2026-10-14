@@ -1,0 +1,27 @@
+name: payments
+source: payments
+target_layer: silver
+target_table: payments
+primary_key: payment_id
+columns:
+  - { name: payment_id,          type: string }
+  - { name: customer_id,         type: string }
+  - { name: account_no,          type: string }
+  - { name: direction,           type: string }
+  - { name: amount,              type: decimal }
+  - { name: ccy,                 type: string }
+  - { name: payment_type,        type: string }
+  - { name: channel,             type: string }
+  - { name: counterparty,        type: string }
+  - { name: beneficiary_country, type: string }
+  - { name: status,              type: string }
+  - { name: value_date,          type: date }
+  - { name: created_ts,          type: timestamp }
+not_null: [payment_id, customer_id, amount, status]
+allowed:
+  status: [SETTLED, PENDING, REJECTED, RETURNED]
+  direction: [DEBIT, CREDIT]
+  channel: [MOBILE, ONLINE, BRANCH, ATM, API]
+pii:
+  account_no: tokenize
+  counterparty: mask

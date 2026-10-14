@@ -16,6 +16,8 @@ RETURN sha2(x, 256);
 ALTER TABLE bank_dev.silver.customer ALTER COLUMN full_name SET MASK bank_dev.silver.mask_name;
 ALTER TABLE bank_dev.silver.customer ALTER COLUMN email     SET MASK bank_dev.silver.tokenize_id;
 ALTER TABLE bank_dev.silver.cards_txn ALTER COLUMN account_no SET MASK bank_dev.silver.tokenize_id;
+ALTER TABLE bank_dev.silver.payments  ALTER COLUMN account_no SET MASK bank_dev.silver.tokenize_id;
+ALTER TABLE bank_dev.silver.payments  ALTER COLUMN counterparty SET MASK bank_dev.silver.mask_name;
 
 -- Row filter example: analysts in 'cards_only' see only their segment's data.
 CREATE FUNCTION IF NOT EXISTS bank_dev.silver.segment_filter(segment STRING)

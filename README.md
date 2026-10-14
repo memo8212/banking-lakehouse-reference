@@ -29,10 +29,13 @@ pytest -q tests/
 
 Example output:
 ```
-Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20)}
-Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5}
-Reconcile: 4/4 passed
+Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20), 'payments': (14985, 25)}
+Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5,
+         'payments_flow': 10, 'payments_by_segment': 25}
+Reconcile: 6/6 passed
 ```
+
+Domains shipped end-to-end: **customer**, **cards**, **payments**.
 
 ## What's inside
 
@@ -85,9 +88,10 @@ Full detail in `docs/`.
 - Monitoring/observability generalizes the registry + reconciliation patterns.
 
 ## Roadmap
-See the design docs and the family `migration-demos` index. Next domains to add:
-payments, loans, accounts, risk, AML. Governance-as-code + Delta Sharing to
-regulators are the next platform layers.
+See the design docs and the family `migration-demos` index. Domains done:
+**customer, cards, payments**. Next: **accounts, loans, deposits, wealth, risk,
+AML**. Governance-as-code + Delta Sharing to regulators are the next platform
+layers.
 
 ## License
 MIT — see `LICENSE`.

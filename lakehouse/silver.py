@@ -85,4 +85,20 @@ def conform(spark, env: Env, contracts: dict) -> dict:
                  .withColumn("amount_base", F.round(F.col("amount") * F.col("fx_rate"), 2))
     cards = _dedupe(cards, t.primary_key)
     _split_and_write(spark, env, cards, t, report)
+
+    # ---- payments ----
+    p = contracts["payments"]
+    pay = (spark.read.format("delta").load(env.table("bronze", "payments"))
+           .withColumn("amount", F.col("amount").cast("double"))
+           .withColumn("value_date", F.to_date("value_date"))
+           .withColumn("created_ts", F.to_timestamp("created_ts", "yyyy-MM-dd HH:mm:ss"))
+           .withColumn("status", F.upper(F.trim("status")))
+           .withColumn("direction", F.upper(F.trim("direction")))
+           .withColumn("channel", F.upper(F.trim("channel")))
+           .withColumn("ccy", F.upper(F.trim("ccy"))))
+    pay = _apply_pii(pay, p)
+    pay = pay.join(fx.select("ccy", "fx_rate"), on="ccy", how="left") \
+             .withColumn("amount_base", F.round(F.col("amount") * F.col("fx_rate"), 2))
+    pay = _dedupe(pay, p.primary_key)
+    _split_and_write(spark, env, pay, p, report)
     return report

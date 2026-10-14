@@ -34,4 +34,23 @@ spend = (posted.groupBy("customer_id")
        .agg(F.round(F.sum("amount_base"), 2).alias("spend"), F.count("txn_id").alias("txns"))
        .orderBy("segment", "month")
        .write.mode("overwrite").saveAsTable(f"{catalog}.gold.card_spend_by_segment"))
-display(spark.table(f"{catalog}.gold.card_spend_by_segment"))
+
+# COMMAND ----------
+
+# MAGIC %md ## payments marts (flow + by segment)
+pay = spark.table(f"{catalog}.silver.payments").filter(F.col("status") == "SETTLED")
+
+(pay.withColumn("month", F.date_format("created_ts", "yyyy-MM"))
+    .groupBy("channel", "direction", "month")
+    .agg(F.round(F.sum("amount_base"), 2).alias("amount_base"),
+         F.count("payment_id").alias("payments"))
+    .orderBy("channel", "direction", "month")
+    .write.mode("overwrite").saveAsTable(f"{catalog}.gold.payments_flow"))
+
+(pay.join(cust.select("customer_id", "segment"), "customer_id", "left")
+    .groupBy("segment", "payment_type")
+    .agg(F.round(F.sum("amount_base"), 2).alias("amount_base"),
+         F.count("payment_id").alias("payments"))
+    .orderBy("segment", "payment_type")
+    .write.mode("overwrite").saveAsTable(f"{catalog}.gold.payments_by_segment"))
+display(spark.table(f"{catalog}.gold.payments_by_segment"))

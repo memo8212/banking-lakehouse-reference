@@ -34,4 +34,28 @@ def build(spark, env: Env) -> dict:
     seg.write.mode("overwrite").option("overwriteSchema", "true") \
        .format("delta").save(env.table("gold", "card_spend_by_segment"))
 
-    return {"customer_360": c360.count(), "card_spend_by_segment": seg.count()}
+    # ---- payments marts ----
+    payments = spark.read.format("delta").load(env.table("silver", "payments"))
+    settled = payments.filter(F.col("status") == "SETTLED")
+
+    flow = (settled
+            .withColumn("month", F.date_format("created_ts", "yyyy-MM"))
+            .groupBy("channel", "direction", "month")
+            .agg(F.round(F.sum("amount_base"), 2).alias("amount_base"),
+                 F.count("payment_id").alias("payments"))
+            .orderBy("channel", "direction", "month"))
+    flow.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "payments_flow"))
+
+    by_segment = (settled.join(cust.select("customer_id", "segment"), "customer_id", "left")
+                  .groupBy("segment", "payment_type")
+                  .agg(F.round(F.sum("amount_base"), 2).alias("amount_base"),
+                       F.count("payment_id").alias("payments"))
+                  .orderBy("segment", "payment_type"))
+    by_segment.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "payments_by_segment"))
+
+    return {"customer_360": c360.count(),
+            "card_spend_by_segment": seg.count(),
+            "payments_flow": flow.count(),
+            "payments_by_segment": by_segment.count()}

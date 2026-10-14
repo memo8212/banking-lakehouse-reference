@@ -30,12 +30,23 @@ extends to the full bank.
 `txn_id (PK)`, `card_id`, `customer_id`, `account_no (token)`, `amount`, `ccy`,
 `merchant`, `mcc`, `txn_ts`, `status`, `fx_rate`, `amount_base`.
 
+### `silver.payments` (contract: `payments.contract.yaml`)
+`payment_id (PK)`, `customer_id`, `account_no (token)`, `direction`, `amount`,
+`ccy`, `payment_type`, `channel`, `counterparty (masked)`, `beneficiary_country`,
+`status`, `value_date`, `created_ts`, `fx_rate`, `amount_base`.
+
 ### `gold.customer_360`
 `customer_id`, `segment`, `country`, `kyc_status`, `total_spend`, `txn_count`,
 `last_txn_ts`.
 
 ### `gold.card_spend_by_segment`
 `segment`, `month`, `spend`, `txns`.
+
+### `gold.payments_flow`
+`channel`, `direction`, `month`, `amount_base`, `payments`.
+
+### `gold.payments_by_segment`
+`segment`, `payment_type`, `amount_base`, `payments`.
 
 ## Relationships
 ```
