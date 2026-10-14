@@ -53,4 +53,28 @@ pay = spark.table(f"{catalog}.silver.payments").filter(F.col("status") == "SETTL
          F.count("payment_id").alias("payments"))
     .orderBy("segment", "payment_type")
     .write.mode("overwrite").saveAsTable(f"{catalog}.gold.payments_by_segment"))
-display(spark.table(f"{catalog}.gold.payments_by_segment"))
+
+# COMMAND ----------
+
+# MAGIC %md ## loans marts (portfolio + risk by segment)
+loans = spark.table(f"{catalog}.silver.loans")
+
+(loans.groupBy("product_type", "status")
+      .agg(F.count("loan_id").alias("loans"),
+           F.round(F.sum("principal_base"), 2).alias("principal_base"),
+           F.round(F.sum("outstanding_base"), 2).alias("outstanding_base"),
+           F.round(F.avg("interest_rate"), 4).alias("avg_rate"),
+           F.round(F.avg("days_past_due"), 1).alias("avg_dpd"))
+      .orderBy("product_type", "status")
+      .write.mode("overwrite").saveAsTable(f"{catalog}.gold.loan_portfolio"))
+
+(loans.join(cust.select("customer_id", "segment"), "customer_id", "left")
+      .groupBy("segment")
+      .agg(F.count("loan_id").alias("loans"),
+           F.round(F.sum("outstanding_base"), 2).alias("outstanding_base"),
+           F.sum(F.when(F.col("days_past_due") > 0, 1).otherwise(0)).alias("delinquent"),
+           F.round(F.sum(F.when(F.col("days_past_due") > 0, 1).otherwise(0))
+                   / F.count("loan_id"), 4).alias("delinquency_rate"))
+      .orderBy("segment")
+      .write.mode("overwrite").saveAsTable(f"{catalog}.gold.loan_risk_by_segment"))
+display(spark.table(f"{catalog}.gold.loan_portfolio"))

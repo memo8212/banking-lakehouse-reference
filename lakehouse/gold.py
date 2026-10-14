@@ -55,7 +55,33 @@ def build(spark, env: Env) -> dict:
     by_segment.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "payments_by_segment"))
 
+    # ---- loans marts ----
+    loans = spark.read.format("delta").load(env.table("silver", "loans"))
+
+    portfolio = (loans.groupBy("product_type", "status")
+                 .agg(F.count("loan_id").alias("loans"),
+                      F.round(F.sum("principal_base"), 2).alias("principal_base"),
+                      F.round(F.sum("outstanding_base"), 2).alias("outstanding_base"),
+                      F.round(F.avg("interest_rate"), 4).alias("avg_rate"),
+                      F.round(F.avg("days_past_due"), 1).alias("avg_dpd"))
+                 .orderBy("product_type", "status"))
+    portfolio.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "loan_portfolio"))
+
+    risk = (loans.join(cust.select("customer_id", "segment"), "customer_id", "left")
+            .groupBy("segment")
+            .agg(F.count("loan_id").alias("loans"),
+                 F.round(F.sum("outstanding_base"), 2).alias("outstanding_base"),
+                 F.sum(F.when(F.col("days_past_due") > 0, 1).otherwise(0)).alias("delinquent"),
+                 F.round(F.sum(F.when(F.col("days_past_due") > 0, 1).otherwise(0))
+                         / F.count("loan_id"), 4).alias("delinquency_rate"))
+            .orderBy("segment"))
+    risk.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "loan_risk_by_segment"))
+
     return {"customer_360": c360.count(),
             "card_spend_by_segment": seg.count(),
             "payments_flow": flow.count(),
-            "payments_by_segment": by_segment.count()}
+            "payments_by_segment": by_segment.count(),
+            "loan_portfolio": portfolio.count(),
+            "loan_risk_by_segment": risk.count()}

@@ -1,0 +1,27 @@
+name: loans
+source: loans
+target_layer: silver
+target_table: loans
+primary_key: loan_id
+columns:
+  - { name: loan_id,            type: string }
+  - { name: customer_id,        type: string }
+  - { name: account_no,         type: string }
+  - { name: product_type,       type: string }
+  - { name: principal,          type: decimal }
+  - { name: ccy,                type: string }
+  - { name: interest_rate,      type: double }
+  - { name: term_months,        type: int }
+  - { name: origination_date,   type: date }
+  - { name: maturity_date,      type: date }
+  - { name: status,             type: string }
+  - { name: outstanding_balance, type: decimal }
+  - { name: days_past_due,      type: int }
+  - { name: ltv,                type: double }
+  - { name: collateral_type,    type: string }
+not_null: [loan_id, customer_id, principal, status]
+allowed:
+  status: [ACTIVE, CLOSED, DELINQUENT, WRITTEN_OFF]
+  product_type: [MORTGAGE, PERSONAL, AUTO, LINE_OF_CREDIT, CREDIT_CARD]
+pii:
+  account_no: tokenize

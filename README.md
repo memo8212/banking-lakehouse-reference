@@ -29,13 +29,15 @@ pytest -q tests/
 
 Example output:
 ```
-Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20), 'payments': (14985, 25)}
+Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20),
+         'payments': (14985, 25), 'loans': (7990, 20)}
 Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5,
-         'payments_flow': 10, 'payments_by_segment': 25}
-Reconcile: 6/6 passed
+         'payments_flow': 10, 'payments_by_segment': 25,
+         'loan_portfolio': 20, 'loan_risk_by_segment': 5}
+Reconcile: 8/8 passed
 ```
 
-Domains shipped end-to-end: **customer**, **cards**, **payments**.
+Domains shipped end-to-end: **customer, cards, payments, loans**.
 
 ## What's inside
 
@@ -55,9 +57,21 @@ pipelines/        Lakeflow Declarative Pipeline (streaming tables + MVs + expect
 resources/        Asset Bundle job + pipeline
 setup/            UC catalogs/schemas/volume + PII masks (SQL)
 monitoring/       Lakehouse Monitoring setup (profile/drift)
+governance/       governance as code: access.yaml + sharing.yaml -> SQL + manifest
 docs/             architecture · naming · data-model · governance · slas-and-dr
-tests/            contracts + end-to-end medallion
+tests/            contracts + end-to-end medallion + governance
 ```
+
+## Governance as code + Delta Sharing
+
+```bash
+python -m governance access           # grants/tags/retention/masks -> SQL
+python -m governance share            # Delta Sharing SQL + manifest (no data copy)
+```
+
+`governance/access.yaml` declares who can do what (reviewed in PRs, applied by
+CI); `governance/sharing.yaml` exposes curated Gold to a regulator via **Delta
+Sharing**. See `docs/governance.md`.
 
 ## Deploy to Databricks (Asset Bundle)
 
@@ -89,9 +103,8 @@ Full detail in `docs/`.
 
 ## Roadmap
 See the design docs and the family `migration-demos` index. Domains done:
-**customer, cards, payments**. Next: **accounts, loans, deposits, wealth, risk,
-AML**. Governance-as-code + Delta Sharing to regulators are the next platform
-layers.
+**customer, cards, payments, loans**. Next: **accounts, deposits, wealth, risk,
+AML**. Governance-as-code and Delta Sharing are implemented in `governance/`.
 
 ## License
 MIT — see `LICENSE`.

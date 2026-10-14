@@ -79,6 +79,40 @@ def gen_fx(path: Path) -> None:
             w.writerow([c, r])
 
 
+LOAN_PRODUCTS = ["MORTGAGE", "PERSONAL", "AUTO", "LINE_OF_CREDIT", "CREDIT_CARD"]
+LOAN_STATUS = ["ACTIVE", "ACTIVE", "ACTIVE", "DELINQUENT", "CLOSED", "WRITTEN_OFF"]
+COLLATERAL = ["PROPERTY", "VEHICLE", "NONE", "SECURITIES"]
+
+
+def gen_loans(path: Path, n_customers: int = 2000, n: int = 8000, seed: int = 14) -> None:
+    rng = random.Random(seed)
+    start = date(2016, 1, 1)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["loan_id", "customer_id", "account_no", "product_type", "principal",
+                    "ccy", "interest_rate", "term_months", "origination_date",
+                    "maturity_date", "status", "outstanding_balance", "days_past_due",
+                    "ltv", "collateral_type"])
+        for i in range(1, n + 1):
+            cid = rng.randint(1, n_customers)
+            orig = start + timedelta(days=rng.randrange(3000))
+            term = rng.choice([12, 24, 36, 60, 120, 240, 360])
+            principal = round(rng.uniform(2000, 900000), 2)
+            w.writerow([
+                f"LN{i:08d}", f"C{cid:07d}", f"ACC{rng.randint(1, 5000):08d}",
+                rng.choice(LOAN_PRODUCTS), principal, rng.choice(CCYS),
+                round(rng.uniform(0.02, 0.19), 4), term, orig.isoformat(),
+                (orig + timedelta(days=term * 30)).isoformat(),
+                "BOGUS" if i % 800 == 0 else rng.choice(LOAN_STATUS),
+                round(principal * rng.uniform(0.1, 1.0), 2),
+                rng.choice([0, 0, 0, 15, 45, 95]), round(rng.uniform(0.1, 1.2), 2),
+                rng.choice(COLLATERAL),
+            ])
+        for j in range(10):
+            w.writerow([f"LNBAD{j:05d}", "", f"ACC9{j:07d}", "PERSONAL", 1000.0, "CAD",
+                        0.05, 12, "2020-01-01", "2021-01-01", "ACTIVE", 500.0, 0, 0.5, "NONE"])
+
+
 PAY_TYPES = ["SWIFT", "SEPA", "EFT", "WIRE", "INTERNAL"]
 CHANNELS = ["MOBILE", "ONLINE", "BRANCH", "ATM", "API"]
 PAY_STATUS = ["SETTLED", "SETTLED", "SETTLED", "PENDING", "REJECTED", "RETURNED"]
@@ -115,8 +149,10 @@ if __name__ == "__main__":
     gen_customers(DATA / "customer.csv")
     gen_cards(DATA / "cards_txn.csv")
     gen_payments(DATA / "payments.csv")
+    gen_loans(DATA / "loans.csv")
     gen_fx(DATA / "fx_rates.csv")
     print("wrote", DATA / "customer.csv")
     print("wrote", DATA / "cards_txn.csv")
     print("wrote", DATA / "payments.csv")
+    print("wrote", DATA / "loans.csv")
     print("wrote", DATA / "fx_rates.csv")

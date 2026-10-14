@@ -35,3 +35,28 @@
 ## Secrets
 - Secret scopes for credentials; never in code. CI uses OAuth / service
   principals, not personal tokens.
+
+## Governance as code
+`governance/access.yaml` declares grants, tags, retention and masks; a renderer
+turns it into SQL (deterministic), so access is reviewed in PRs and applied by CI
+instead of by hand.
+
+```bash
+python -m governance access            # -> governance/generated/access.sql
+python -m governance access --execute  # apply on a workspace
+```
+It renders `GRANT … TO \`group\``, `SET TAGS`, `deletedFileRetentionDuration`
+(7-year retention) and `ALTER COLUMN … SET MASK`.
+
+## Delta Sharing
+`governance/sharing.yaml` declares a share + recipient + tables. The renderer
+emits the sharing SQL and a **manifest** (deterministic content hash) — no data
+copy, the recipient reads from your storage.
+
+```bash
+python -m governance share             # -> governance/generated/sharing.sql + manifest
+python -m governance share --execute   # apply on a workspace
+```
+Recipients read with a profile file: `SELECT * FROM bank_gold_share.bank_dev.gold.customer_360;`.
+Revoke with `REVOKE SELECT ON SHARE … FROM RECIPIENT …` when the engagement ends.
+

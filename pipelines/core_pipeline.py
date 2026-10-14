@@ -46,6 +46,15 @@ def bronze_payments():
             .withColumn("_ingested_at", F.current_timestamp())
             .withColumn("_source_file", F.lit("payments.csv")))
 
+@dp.table(name="bronze_loans", comment="raw loans feed")
+def bronze_loans():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/loans")
+            .load(f"{LANDING}/loans")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("loans.csv")))
+
 # COMMAND ----------
 
 # MAGIC %md ## Silver — conformed + masked + quality expectations
@@ -79,6 +88,15 @@ def silver_payments():
             .withColumn("direction", F.upper(F.trim("direction")))
             .withColumn("account_no", F.substring(F.sha2("account_no", 256), 1, 16))
             .withColumn("counterparty", F.concat(F.substring("counterparty", 1, 1), F.lit("***"))))
+
+@dp.table(name="silver_loans", comment="conformed loans")
+@dp.expect_or_drop("valid_status", "status IN ('ACTIVE','CLOSED','DELINQUENT','WRITTEN_OFF')")
+def silver_loans():
+    return (dp.read_stream("bronze_loans")
+            .withColumn("principal", F.col("principal").cast("double"))
+            .withColumn("outstanding_balance", F.col("outstanding_balance").cast("double"))
+            .withColumn("status", F.upper(F.trim("status")))
+            .withColumn("account_no", F.substring(F.sha2("account_no", 256), 1, 16)))
 
 # COMMAND ----------
 
@@ -117,3 +135,21 @@ def gold_payments_by_segment():
             .groupBy("segment", "payment_type")
             .agg(F.round(F.sum("amount"), 2).alias("amount_base"),
                  F.count("payment_id").alias("payments")))
+
+@dp.materialized_view(name="gold_loan_portfolio", comment="loan portfolio by product/status")
+def gold_loan_portfolio():
+    loans = dp.read("silver_loans")
+    return (loans.groupBy("product_type", "status")
+            .agg(F.count("loan_id").alias("loans"),
+                 F.round(F.sum("outstanding_balance"), 2).alias("outstanding_base"),
+                 F.round(F.avg("interest_rate"), 4).alias("avg_rate")))
+
+@dp.materialized_view(name="gold_loan_risk_by_segment", comment="loan risk by segment")
+def gold_loan_risk_by_segment():
+    cust = dp.read("silver_customer")
+    loans = dp.read("silver_loans")
+    return (loans.join(cust.select("customer_id", "segment"), "customer_id", "left")
+            .groupBy("segment")
+            .agg(F.count("loan_id").alias("loans"),
+                 F.round(F.sum("outstanding_balance"), 2).alias("outstanding_base"),
+                 F.sum(F.when(F.col("days_past_due") > 0, 1).otherwise(0)).alias("delinquent")))

@@ -1,0 +1,39 @@
+# Governance as code: grants, tags, retention and masks.
+# `python -m governance access` renders this into SQL (and can apply it).
+catalog: bank_dev
+
+groups:
+  analysts:
+    - "USAGE ON CATALOG bank_dev"
+    - "USAGE ON SCHEMA bank_dev.gold"
+    - "SELECT ON TABLE bank_dev.gold.customer_360"
+    - "SELECT ON TABLE bank_dev.gold.card_spend_by_segment"
+    - "SELECT ON TABLE bank_dev.gold.payments_flow"
+    - "SELECT ON TABLE bank_dev.gold.loan_portfolio"
+  dataops:
+    - "USAGE ON CATALOG bank_dev"
+    - "USE SCHEMA bank_dev.bronze"
+    - "MODIFY ON SCHEMA bank_dev.silver"
+  pii_readers:
+    - "SELECT ON TABLE bank_dev.silver.customer"
+
+tags:
+  bank_dev.gold.customer_360: { domain: customer, layer: gold }
+  bank_dev.gold.card_spend_by_segment: { domain: cards, layer: gold }
+  bank_dev.gold.payments_flow: { domain: payments, layer: gold }
+  bank_dev.gold.loan_portfolio: { domain: loans, layer: gold }
+  bank_dev.gold.loan_risk_by_segment: { domain: loans, layer: gold }
+
+retention:
+  bank_dev.bronze.customer: "interval 2555 days"
+  bank_dev.bronze.cards_txn: "interval 2555 days"
+  bank_dev.bronze.payments: "interval 2555 days"
+  bank_dev.bronze.loans: "interval 2555 days"
+
+masks:
+  - { table: bank_dev.silver.customer, column: full_name, function: bank_dev.silver.mask_name }
+  - { table: bank_dev.silver.customer, column: email, function: bank_dev.silver.tokenize_id }
+  - { table: bank_dev.silver.cards_txn, column: account_no, function: bank_dev.silver.tokenize_id }
+  - { table: bank_dev.silver.payments, column: account_no, function: bank_dev.silver.tokenize_id }
+  - { table: bank_dev.silver.payments, column: counterparty, function: bank_dev.silver.mask_name }
+  - { table: bank_dev.silver.loans, column: account_no, function: bank_dev.silver.tokenize_id }

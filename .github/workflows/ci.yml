@@ -34,5 +34,10 @@ jobs:
       - name: Tests
         run: pytest -q tests/
 
+      - name: Governance as code (render)
+        run: |
+          python -m governance access
+          python -m governance share
+
       - name: Show reconciliation report
         run: cat lakehouse_storage/recon/reconciliation_report.md

@@ -1,0 +1,8 @@
+# Delta Sharing: expose curated Gold tables to a recipient without copying data.
+share: bank_gold_share
+recipient: regulator_acme
+tables:
+  - bank_dev.gold.customer_360
+  - bank_dev.gold.loan_portfolio
+  - bank_dev.gold.loan_risk_by_segment
+  - bank_dev.gold.payments_flow

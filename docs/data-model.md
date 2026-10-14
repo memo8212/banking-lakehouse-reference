@@ -35,6 +35,12 @@ extends to the full bank.
 `ccy`, `payment_type`, `channel`, `counterparty (masked)`, `beneficiary_country`,
 `status`, `value_date`, `created_ts`, `fx_rate`, `amount_base`.
 
+### `silver.loans` (contract: `loans.contract.yaml`)
+`loan_id (PK)`, `customer_id`, `account_no (token)`, `product_type`, `principal`,
+`ccy`, `interest_rate`, `term_months`, `origination_date`, `maturity_date`,
+`status`, `outstanding_balance`, `days_past_due`, `ltv`, `collateral_type`,
+`fx_rate`, `principal_base`, `outstanding_base`.
+
 ### `gold.customer_360`
 `customer_id`, `segment`, `country`, `kyc_status`, `total_spend`, `txn_count`,
 `last_txn_ts`.
@@ -47,6 +53,13 @@ extends to the full bank.
 
 ### `gold.payments_by_segment`
 `segment`, `payment_type`, `amount_base`, `payments`.
+
+### `gold.loan_portfolio`
+`product_type`, `status`, `loans`, `principal_base`, `outstanding_base`,
+`avg_rate`, `avg_dpd`.
+
+### `gold.loan_risk_by_segment`
+`segment`, `loans`, `outstanding_base`, `delinquent`, `delinquency_rate`.
 
 ## Relationships
 ```

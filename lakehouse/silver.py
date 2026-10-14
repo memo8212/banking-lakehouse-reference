@@ -101,4 +101,25 @@ def conform(spark, env: Env, contracts: dict) -> dict:
              .withColumn("amount_base", F.round(F.col("amount") * F.col("fx_rate"), 2))
     pay = _dedupe(pay, p.primary_key)
     _split_and_write(spark, env, pay, p, report)
+
+    # ---- loans ----
+    ln = contracts["loans"]
+    loans = (spark.read.format("delta").load(env.table("bronze", "loans"))
+             .withColumn("principal", F.col("principal").cast("double"))
+             .withColumn("outstanding_balance", F.col("outstanding_balance").cast("double"))
+             .withColumn("interest_rate", F.col("interest_rate").cast("double"))
+             .withColumn("term_months", F.col("term_months").cast("int"))
+             .withColumn("days_past_due", F.col("days_past_due").cast("int"))
+             .withColumn("ltv", F.col("ltv").cast("double"))
+             .withColumn("origination_date", F.to_date("origination_date"))
+             .withColumn("maturity_date", F.to_date("maturity_date"))
+             .withColumn("status", F.upper(F.trim("status")))
+             .withColumn("product_type", F.upper(F.trim("product_type")))
+             .withColumn("ccy", F.upper(F.trim("ccy"))))
+    loans = _apply_pii(loans, ln)
+    loans = loans.join(fx.select("ccy", "fx_rate"), on="ccy", how="left") \
+                 .withColumn("principal_base", F.round(F.col("principal") * F.col("fx_rate"), 2)) \
+                 .withColumn("outstanding_base", F.round(F.col("outstanding_balance") * F.col("fx_rate"), 2))
+    loans = _dedupe(loans, ln.primary_key)
+    _split_and_write(spark, env, loans, ln, report)
     return report
