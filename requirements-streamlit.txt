@@ -1,0 +1,4 @@
+# Gold-mart explorer (Streamlit)
+streamlit>=1.30
+pandas>=2.0
+pyarrow>=14

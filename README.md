@@ -51,10 +51,12 @@ lakehouse/        runnable medallion (Spark + Delta)
   contracts.py    load + validate contracts
   bronze.py       raw ingest + file registry
   silver.py       conform + PII masks + dedupe + quarantine
-  gold.py         domain marts (customer_360, card spend)
+  gold.py         domain marts (customer_360, payments, loans, accounts, risk, AML)
+  read.py         read gold marts (for notebooks/tests/app)
   reconcile.py    source↔bronze counts, gold↔silver parity
   pipeline.py     run() the whole thing
   cli.py          `python -m lakehouse run|reconcile`
+app.py            Streamlit gold-mart explorer
 notebooks/        Databricks notebooks (bootstrap → bronze → silver → gold → reconcile)
 pipelines/        Lakeflow Declarative Pipeline (streaming tables + MVs + expectations)
 resources/        Asset Bundle job + pipeline
@@ -76,6 +78,17 @@ python -m governance share            # Delta Sharing SQL + manifest (no data co
 `governance/access.yaml` declares who can do what (reviewed in PRs, applied by
 CI); `governance/sharing.yaml` exposes curated Gold to a regulator via **Delta
 Sharing**. See `docs/governance.md`.
+
+## Explore Gold (Streamlit)
+
+```bash
+pip install -r requirements-streamlit.txt
+python -m lakehouse run        # build the gold marts
+streamlit run app.py
+```
+
+A small explorer over the gold marts: pick a mart, see row/column counts, browse
+the table, chart a numeric column grouped by a category, and download CSV.
 
 ## Deploy to Databricks (Asset Bundle)
 
