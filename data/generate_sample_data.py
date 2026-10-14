@@ -118,6 +118,35 @@ CHANNELS = ["MOBILE", "ONLINE", "BRANCH", "ATM", "API"]
 PAY_STATUS = ["SETTLED", "SETTLED", "SETTLED", "PENDING", "REJECTED", "RETURNED"]
 CP = ["ACME LTD", "GLOBEX", "INITECH", "UMBRELLA CORP", "WAYNE ENT"]
 
+ACCT_TYPES = ["CURRENT", "SAVINGS", "TERM", "LOAN"]
+ACCT_STATUS = ["ACTIVE", "ACTIVE", "ACTIVE", "DORMANT", "CLOSED", "FROZEN"]
+BRANCHES = ["BR-001", "BR-002", "BR-003", "BR-004", "BR-005"]
+
+
+def gen_accounts(path: Path, n_customers: int = 2000, n: int = 12000, seed: int = 15) -> None:
+    rng = random.Random(seed)
+    start = date(2015, 1, 1)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["account_id", "customer_id", "account_no", "account_type",
+                    "product_code", "ccy", "balance", "available_balance",
+                    "opened_date", "status", "branch", "interest_rate"])
+        for i in range(1, n + 1):
+            cid = rng.randint(1, n_customers)
+            atype = rng.choice(ACCT_TYPES)
+            balance = round(rng.uniform(0, 250000), 2)
+            w.writerow([
+                f"AC{i:08d}", f"C{cid:07d}", f"ACC{rng.randint(1, 5000):08d}",
+                atype, f"{atype[:3]}01", rng.choice(CCYS), balance,
+                round(balance * rng.uniform(0.8, 1.0), 2),
+                (start + timedelta(days=rng.randrange(3650))).isoformat(),
+                "BOGUS" if i % 900 == 0 else rng.choice(ACCT_STATUS),
+                rng.choice(BRANCHES), round(rng.uniform(0.0, 0.05), 4),
+            ])
+        for j in range(10):
+            w.writerow([f"ACBAD{j:05d}", "", f"ACC9{j:07d}", "CURRENT", "CUR01",
+                        "CAD", 0.0, 0.0, "2020-01-01", "ACTIVE", "BR-001", 0.0])
+
 
 def gen_payments(path: Path, n_customers: int = 2000, n: int = 15000, seed: int = 13) -> None:
     rng = random.Random(seed)
@@ -150,9 +179,11 @@ if __name__ == "__main__":
     gen_cards(DATA / "cards_txn.csv")
     gen_payments(DATA / "payments.csv")
     gen_loans(DATA / "loans.csv")
+    gen_accounts(DATA / "accounts.csv")
     gen_fx(DATA / "fx_rates.csv")
     print("wrote", DATA / "customer.csv")
     print("wrote", DATA / "cards_txn.csv")
     print("wrote", DATA / "payments.csv")
     print("wrote", DATA / "loans.csv")
+    print("wrote", DATA / "accounts.csv")
     print("wrote", DATA / "fx_rates.csv")

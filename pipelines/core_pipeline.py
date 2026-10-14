@@ -55,6 +55,15 @@ def bronze_loans():
             .withColumn("_ingested_at", F.current_timestamp())
             .withColumn("_source_file", F.lit("loans.csv")))
 
+@dp.table(name="bronze_accounts", comment="raw accounts feed")
+def bronze_accounts():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/accounts")
+            .load(f"{LANDING}/accounts")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("accounts.csv")))
+
 # COMMAND ----------
 
 # MAGIC %md ## Silver — conformed + masked + quality expectations
@@ -96,6 +105,15 @@ def silver_loans():
             .withColumn("principal", F.col("principal").cast("double"))
             .withColumn("outstanding_balance", F.col("outstanding_balance").cast("double"))
             .withColumn("status", F.upper(F.trim("status")))
+            .withColumn("account_no", F.substring(F.sha2("account_no", 256), 1, 16)))
+
+@dp.table(name="silver_accounts", comment="conformed accounts")
+@dp.expect_or_drop("valid_status", "status IN ('ACTIVE','DORMANT','CLOSED','FROZEN')")
+def silver_accounts():
+    return (dp.read_stream("bronze_accounts")
+            .withColumn("balance", F.col("balance").cast("double"))
+            .withColumn("status", F.upper(F.trim("status")))
+            .withColumn("account_type", F.upper(F.trim("account_type")))
             .withColumn("account_no", F.substring(F.sha2("account_no", 256), 1, 16)))
 
 # COMMAND ----------
@@ -153,3 +171,20 @@ def gold_loan_risk_by_segment():
             .agg(F.count("loan_id").alias("loans"),
                  F.round(F.sum("outstanding_balance"), 2).alias("outstanding_base"),
                  F.sum(F.when(F.col("days_past_due") > 0, 1).otherwise(0)).alias("delinquent")))
+
+@dp.materialized_view(name="gold_account_balances", comment="balances by account type/status")
+def gold_account_balances():
+    accounts = dp.read("silver_accounts")
+    return (accounts.groupBy("account_type", "status")
+            .agg(F.count("account_id").alias("accounts"),
+                 F.round(F.sum("balance"), 2).alias("balance_base"),
+                 F.round(F.avg("balance"), 2).alias("avg_balance")))
+
+@dp.materialized_view(name="gold_deposits_by_segment", comment="deposits by segment")
+def gold_deposits_by_segment():
+    cust = dp.read("silver_customer")
+    accounts = dp.read("silver_accounts").filter(F.col("status") == "ACTIVE")
+    return (accounts.join(cust.select("customer_id", "segment"), "customer_id", "left")
+            .groupBy("segment", "account_type")
+            .agg(F.count("account_id").alias("accounts"),
+                 F.round(F.sum("balance"), 2).alias("balance_base")))

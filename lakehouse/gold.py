@@ -9,18 +9,24 @@ from lakehouse.config import Env
 def build(spark, env: Env) -> dict:
     cust = spark.read.format("delta").load(env.table("silver", "customer"))
     cards = spark.read.format("delta").load(env.table("silver", "cards_txn"))
+    accounts = spark.read.format("delta").load(env.table("silver", "accounts"))
 
     posted = cards.filter(F.col("status") == "POSTED")
 
-    # customer 360: profile + card spend
+    # customer 360: profile + card spend + total account balance
     spend = (posted.groupBy("customer_id")
              .agg(F.round(F.sum("amount_base"), 2).alias("total_spend"),
                   F.count("txn_id").alias("txn_count"),
                   F.max("txn_ts").alias("last_txn_ts")))
+    balances = (accounts.filter(F.col("status") == "ACTIVE")
+                .groupBy("customer_id")
+                .agg(F.round(F.sum("balance_base"), 2).alias("total_balance")))
     c360 = (cust.select("customer_id", "segment", "country", "kyc_status")
                 .join(spend, "customer_id", "left")
-                .fillna({"total_spend": 0.0, "txn_count": 0})
-                .withColumn("total_spend", F.round("total_spend", 2)))
+                .join(balances, "customer_id", "left")
+                .fillna({"total_spend": 0.0, "txn_count": 0, "total_balance": 0.0})
+                .withColumn("total_spend", F.round("total_spend", 2))
+                .withColumn("total_balance", F.round("total_balance", 2)))
     c360.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "customer_360"))
 
@@ -79,9 +85,30 @@ def build(spark, env: Env) -> dict:
     risk.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "loan_risk_by_segment"))
 
+    # ---- accounts marts ----
+    acct_bal = (accounts.groupBy("account_type", "status")
+                .agg(F.count("account_id").alias("accounts"),
+                     F.round(F.sum("balance_base"), 2).alias("balance_base"),
+                     F.round(F.sum("available_base"), 2).alias("available_base"),
+                     F.round(F.avg("balance_base"), 2).alias("avg_balance"))
+                .orderBy("account_type", "status"))
+    acct_bal.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "account_balances"))
+
+    deposits = (accounts.filter(F.col("status") == "ACTIVE")
+                .join(cust.select("customer_id", "segment"), "customer_id", "left")
+                .groupBy("segment", "account_type")
+                .agg(F.count("account_id").alias("accounts"),
+                     F.round(F.sum("balance_base"), 2).alias("balance_base"))
+                .orderBy("segment", "account_type"))
+    deposits.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "deposits_by_segment"))
+
     return {"customer_360": c360.count(),
             "card_spend_by_segment": seg.count(),
             "payments_flow": flow.count(),
             "payments_by_segment": by_segment.count(),
             "loan_portfolio": portfolio.count(),
-            "loan_risk_by_segment": risk.count()}
+            "loan_risk_by_segment": risk.count(),
+            "account_balances": acct_bal.count(),
+            "deposits_by_segment": deposits.count()}

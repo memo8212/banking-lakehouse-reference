@@ -19,6 +19,7 @@ ALTER TABLE bank_dev.silver.cards_txn ALTER COLUMN account_no SET MASK bank_dev.
 ALTER TABLE bank_dev.silver.payments  ALTER COLUMN account_no SET MASK bank_dev.silver.tokenize_id;
 ALTER TABLE bank_dev.silver.payments  ALTER COLUMN counterparty SET MASK bank_dev.silver.mask_name;
 ALTER TABLE bank_dev.silver.loans     ALTER COLUMN account_no SET MASK bank_dev.silver.tokenize_id;
+ALTER TABLE bank_dev.silver.accounts  ALTER COLUMN account_no SET MASK bank_dev.silver.tokenize_id;
 
 -- Row filter example: analysts in 'cards_only' see only their segment's data.
 CREATE FUNCTION IF NOT EXISTS bank_dev.silver.segment_filter(segment STRING)

@@ -6,3 +6,4 @@ tables:
   - bank_dev.gold.loan_portfolio
   - bank_dev.gold.loan_risk_by_segment
   - bank_dev.gold.payments_flow
+  - bank_dev.gold.account_balances

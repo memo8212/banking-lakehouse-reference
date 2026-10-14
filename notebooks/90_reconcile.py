@@ -11,7 +11,7 @@ dbutils.widgets.text("catalog", "bank_dev")
 catalog = dbutils.widgets.get("catalog")
 
 results = []
-for feed in ("customer", "cards_txn", "payments", "loans"):
+for feed in ("customer", "cards_txn", "payments", "loans", "accounts"):
     src = spark.read.option("header", True).csv(f"/Volumes/{catalog}/landing/feeds/{feed}").count()
     brz = spark.table(f"{catalog}.bronze.{feed}").count()
     results.append((f"{feed} source vs bronze", src == brz, src, brz))

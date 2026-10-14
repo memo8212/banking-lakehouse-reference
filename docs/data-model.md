@@ -41,9 +41,14 @@ extends to the full bank.
 `status`, `outstanding_balance`, `days_past_due`, `ltv`, `collateral_type`,
 `fx_rate`, `principal_base`, `outstanding_base`.
 
+### `silver.accounts` (contract: `accounts.contract.yaml`)
+`account_id (PK)`, `customer_id`, `account_no (token)`, `account_type`,
+`product_code`, `ccy`, `balance`, `available_balance`, `opened_date`, `status`,
+`branch`, `interest_rate`, `fx_rate`, `balance_base`, `available_base`.
+
 ### `gold.customer_360`
 `customer_id`, `segment`, `country`, `kyc_status`, `total_spend`, `txn_count`,
-`last_txn_ts`.
+`last_txn_ts`, `total_balance`.
 
 ### `gold.card_spend_by_segment`
 `segment`, `month`, `spend`, `txns`.
@@ -60,6 +65,12 @@ extends to the full bank.
 
 ### `gold.loan_risk_by_segment`
 `segment`, `loans`, `outstanding_base`, `delinquent`, `delinquency_rate`.
+
+### `gold.account_balances`
+`account_type`, `status`, `accounts`, `balance_base`, `available_base`, `avg_balance`.
+
+### `gold.deposits_by_segment`
+`segment`, `account_type`, `accounts`, `balance_base`.
 
 ## Relationships
 ```

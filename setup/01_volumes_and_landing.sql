@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS bank_dev.bronze.loans (
   outstanding_balance STRING, days_past_due STRING, ltv STRING, collateral_type STRING,
   _ingested_at TIMESTAMP, _source_file STRING);
 
+CREATE TABLE IF NOT EXISTS bank_dev.bronze.accounts (
+  account_id STRING, customer_id STRING, account_no STRING, account_type STRING,
+  product_code STRING, ccy STRING, balance STRING, available_balance STRING,
+  opened_date STRING, status STRING, branch STRING, interest_rate STRING,
+  _ingested_at TIMESTAMP, _source_file STRING);
+
 -- File registry (file-level lineage)
 CREATE TABLE IF NOT EXISTS bank_dev.bronze.file_registry (
   file_name STRING, path STRING, size BIGINT, md5 STRING, lines BIGINT);
@@ -66,10 +72,19 @@ CREATE TABLE IF NOT EXISTS bank_dev.silver.loans (
   CONSTRAINT pk_loans PRIMARY KEY (loan_id))
   COMMENT 'contract loans.contract.yaml';
 
+CREATE TABLE IF NOT EXISTS bank_dev.silver.accounts (
+  account_id STRING NOT NULL, customer_id STRING, account_no STRING, account_type STRING,
+  product_code STRING, ccy STRING, balance DOUBLE, available_balance DOUBLE,
+  opened_date DATE, status STRING, branch STRING, interest_rate DOUBLE,
+  fx_rate DOUBLE, balance_base DOUBLE, available_base DOUBLE,
+  CONSTRAINT pk_accounts PRIMARY KEY (account_id))
+  COMMENT 'contract accounts.contract.yaml';
+
 -- Gold (domain marts)
 CREATE TABLE IF NOT EXISTS bank_dev.gold.customer_360 (
   customer_id STRING, segment STRING, country STRING, kyc_status STRING,
-  total_spend DECIMAL(18,2), txn_count BIGINT, last_txn_ts TIMESTAMP)
+  total_spend DECIMAL(18,2), txn_count BIGINT, last_txn_ts TIMESTAMP,
+  total_balance DECIMAL(18,2))
   CLUSTER BY (segment);
 
 CREATE TABLE IF NOT EXISTS bank_dev.gold.card_spend_by_segment (
@@ -92,6 +107,15 @@ CREATE TABLE IF NOT EXISTS bank_dev.gold.loan_portfolio (
 CREATE TABLE IF NOT EXISTS bank_dev.gold.loan_risk_by_segment (
   segment STRING, loans BIGINT, outstanding_base DECIMAL(18,2), delinquent BIGINT,
   delinquency_rate DOUBLE)
+  CLUSTER BY (segment);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.account_balances (
+  account_type STRING, status STRING, accounts BIGINT, balance_base DECIMAL(18,2),
+  available_base DECIMAL(18,2), avg_balance DECIMAL(18,2))
+  CLUSTER BY (account_type);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.deposits_by_segment (
+  segment STRING, account_type STRING, accounts BIGINT, balance_base DECIMAL(18,2))
   CLUSTER BY (segment);
 
 SELECT 'landing + tables ready' AS status;

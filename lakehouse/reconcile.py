@@ -9,7 +9,7 @@ from lakehouse.config import Env
 def reconcile(spark, env: Env) -> list[dict]:
     results: list[dict] = []
 
-    for name in ("customer", "cards_txn", "payments", "loans"):
+    for name in ("customer", "cards_txn", "payments", "loans", "accounts"):
         src = spark.read.option("header", True).csv(f"{env.source_dir}/{name}.csv").count()
         brz = spark.read.format("delta").load(env.table("bronze", name)).count()
         results.append({"check": f"{name}: source vs bronze row-count",
@@ -46,6 +46,16 @@ def reconcile(spark, env: Env) -> list[dict]:
     results.append({"check": "gold loan_portfolio vs silver outstanding_base",
                     "status": "PASSED" if lok else "FAILED",
                     "expected": round(float(ls), 2), "actual": round(float(lg), 2)})
+
+    # accounts: gold account_balances total vs silver balance
+    acct_silver = spark.read.format("delta").load(env.table("silver", "accounts"))
+    acct_gold = spark.read.format("delta").load(env.table("gold", "account_balances"))
+    asum = acct_silver.agg(F.coalesce(F.sum("balance_base"), F.lit(0.0))).first()[0]
+    agsum = acct_gold.agg(F.coalesce(F.sum("balance_base"), F.lit(0.0))).first()[0]
+    aok = abs(float(asum) - float(agsum)) < 0.01
+    results.append({"check": "gold account_balances vs silver balance_base",
+                    "status": "PASSED" if aok else "FAILED",
+                    "expected": round(float(asum), 2), "actual": round(float(agsum), 2)})
 
     results.append({"check": "silver customer rejects (<=5% tolerance)",
                     "status": "PASSED", "expected": "n/a",

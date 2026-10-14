@@ -29,15 +29,15 @@ pytest -q tests/
 
 Example output:
 ```
-Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20),
-         'payments': (14985, 25), 'loans': (7990, 20)}
-Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5,
-         'payments_flow': 10, 'payments_by_segment': 25,
-         'loan_portfolio': 20, 'loan_risk_by_segment': 5}
-Reconcile: 8/8 passed
+Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20), 'payments': (14985, 25),
+         'loans': (7990, 20), 'accounts': (11990, 20)}
+Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5, 'payments_flow': 10,
+         'payments_by_segment': 25, 'loan_portfolio': 20, 'loan_risk_by_segment': 5,
+         'account_balances': 15, 'deposits_by_segment': 20}
+Reconcile: 10/10 passed
 ```
 
-Domains shipped end-to-end: **customer, cards, payments, loans**.
+Domains shipped end-to-end: **customer, cards, payments, loans, accounts**.
 
 ## What's inside
 
@@ -103,7 +103,7 @@ Full detail in `docs/`.
 
 ## Roadmap
 See the design docs and the family `migration-demos` index. Domains done:
-**customer, cards, payments, loans**. Next: **accounts, deposits, wealth, risk,
+**customer, cards, payments, loans, accounts**. Next: **deposits, wealth, risk,
 AML**. Governance-as-code and Delta Sharing are implemented in `governance/`.
 
 ## License

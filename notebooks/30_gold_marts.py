@@ -77,4 +77,25 @@ loans = spark.table(f"{catalog}.silver.loans")
                    / F.count("loan_id"), 4).alias("delinquency_rate"))
       .orderBy("segment")
       .write.mode("overwrite").saveAsTable(f"{catalog}.gold.loan_risk_by_segment"))
-display(spark.table(f"{catalog}.gold.loan_portfolio"))
+
+# COMMAND ----------
+
+# MAGIC %md ## accounts marts (balances + deposits by segment)
+accounts = spark.table(f"{catalog}.silver.accounts")
+
+(accounts.groupBy("account_type", "status")
+         .agg(F.count("account_id").alias("accounts"),
+              F.round(F.sum("balance_base"), 2).alias("balance_base"),
+              F.round(F.sum("available_base"), 2).alias("available_base"),
+              F.round(F.avg("balance_base"), 2).alias("avg_balance"))
+         .orderBy("account_type", "status")
+         .write.mode("overwrite").saveAsTable(f"{catalog}.gold.account_balances"))
+
+(accounts.filter(F.col("status") == "ACTIVE")
+         .join(cust.select("customer_id", "segment"), "customer_id", "left")
+         .groupBy("segment", "account_type")
+         .agg(F.count("account_id").alias("accounts"),
+              F.round(F.sum("balance_base"), 2).alias("balance_base"))
+         .orderBy("segment", "account_type")
+         .write.mode("overwrite").saveAsTable(f"{catalog}.gold.deposits_by_segment"))
+display(spark.table(f"{catalog}.gold.account_balances"))

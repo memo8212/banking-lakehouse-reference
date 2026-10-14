@@ -10,6 +10,8 @@ groups:
     - "SELECT ON TABLE bank_dev.gold.card_spend_by_segment"
     - "SELECT ON TABLE bank_dev.gold.payments_flow"
     - "SELECT ON TABLE bank_dev.gold.loan_portfolio"
+    - "SELECT ON TABLE bank_dev.gold.account_balances"
+    - "SELECT ON TABLE bank_dev.gold.deposits_by_segment"
   dataops:
     - "USAGE ON CATALOG bank_dev"
     - "USE SCHEMA bank_dev.bronze"
@@ -23,6 +25,8 @@ tags:
   bank_dev.gold.payments_flow: { domain: payments, layer: gold }
   bank_dev.gold.loan_portfolio: { domain: loans, layer: gold }
   bank_dev.gold.loan_risk_by_segment: { domain: loans, layer: gold }
+  bank_dev.gold.account_balances: { domain: accounts, layer: gold }
+  bank_dev.gold.deposits_by_segment: { domain: accounts, layer: gold }
 
 retention:
   bank_dev.bronze.customer: "interval 2555 days"
@@ -37,3 +41,4 @@ masks:
   - { table: bank_dev.silver.payments, column: account_no, function: bank_dev.silver.tokenize_id }
   - { table: bank_dev.silver.payments, column: counterparty, function: bank_dev.silver.mask_name }
   - { table: bank_dev.silver.loans, column: account_no, function: bank_dev.silver.tokenize_id }
+  - { table: bank_dev.silver.accounts, column: account_no, function: bank_dev.silver.tokenize_id }

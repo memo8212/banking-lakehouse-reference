@@ -1,0 +1,24 @@
+name: accounts
+source: accounts
+target_layer: silver
+target_table: accounts
+primary_key: account_id
+columns:
+  - { name: account_id,        type: string }
+  - { name: customer_id,       type: string }
+  - { name: account_no,        type: string }
+  - { name: account_type,      type: string }
+  - { name: product_code,      type: string }
+  - { name: ccy,               type: string }
+  - { name: balance,           type: decimal }
+  - { name: available_balance, type: decimal }
+  - { name: opened_date,       type: date }
+  - { name: status,            type: string }
+  - { name: branch,            type: string }
+  - { name: interest_rate,     type: double }
+not_null: [account_id, customer_id, balance, status]
+allowed:
+  account_type: [CURRENT, SAVINGS, TERM, LOAN]
+  status: [ACTIVE, DORMANT, CLOSED, FROZEN]
+pii:
+  account_no: tokenize

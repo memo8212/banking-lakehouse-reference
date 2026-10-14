@@ -122,4 +122,21 @@ def conform(spark, env: Env, contracts: dict) -> dict:
                  .withColumn("outstanding_base", F.round(F.col("outstanding_balance") * F.col("fx_rate"), 2))
     loans = _dedupe(loans, ln.primary_key)
     _split_and_write(spark, env, loans, ln, report)
+
+    # ---- accounts ----
+    ac = contracts["accounts"]
+    accounts = (spark.read.format("delta").load(env.table("bronze", "accounts"))
+                .withColumn("balance", F.col("balance").cast("double"))
+                .withColumn("available_balance", F.col("available_balance").cast("double"))
+                .withColumn("interest_rate", F.col("interest_rate").cast("double"))
+                .withColumn("opened_date", F.to_date("opened_date"))
+                .withColumn("status", F.upper(F.trim("status")))
+                .withColumn("account_type", F.upper(F.trim("account_type")))
+                .withColumn("ccy", F.upper(F.trim("ccy"))))
+    accounts = _apply_pii(accounts, ac)
+    accounts = accounts.join(fx.select("ccy", "fx_rate"), on="ccy", how="left") \
+                       .withColumn("balance_base", F.round(F.col("balance") * F.col("fx_rate"), 2)) \
+                       .withColumn("available_base", F.round(F.col("available_balance") * F.col("fx_rate"), 2))
+    accounts = _dedupe(accounts, ac.primary_key)
+    _split_and_write(spark, env, accounts, ac, report)
     return report

@@ -15,7 +15,7 @@ landing = f"/Volumes/{catalog}/landing/feeds"
 # COMMAND ----------
 
 # MAGIC %md ## Ingest each feed (idempotent, append to Bronze)
-for feed in ("customer", "cards_txn", "payments", "loans", "fx_rates"):
+for feed in ("customer", "cards_txn", "payments", "loans", "accounts", "fx_rates"):
     (spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "csv")
         .option("header", "true")
