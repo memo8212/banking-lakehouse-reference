@@ -9,3 +9,4 @@ data/*.csv
 .idea/
 .vscode/
 governance/generated/
+semantic/generated/

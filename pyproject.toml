@@ -16,7 +16,7 @@ dev = ["pytest>=7.4", "delta-spark>=3.0"]
 banklake = "lakehouse.cli:main"
 
 [tool.setuptools]
-packages = ["lakehouse"]
+packages = ["lakehouse", "governance", "semantic"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -39,5 +39,11 @@ jobs:
           python -m governance access
           python -m governance share
 
+      - name: Semantic layer + Genie
+        run: |
+          python -m semantic metrics
+          python -m semantic genie
+          python -m semantic ask "what is card spend by segment?" --run
+
       - name: Show reconciliation report
         run: cat lakehouse_storage/recon/reconciliation_report.md

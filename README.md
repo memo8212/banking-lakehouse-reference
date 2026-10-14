@@ -57,15 +57,17 @@ lakehouse/        runnable medallion (Spark + Delta)
   pipeline.py     run() the whole thing
   cli.py          `python -m lakehouse run|reconcile`
 app.py            Streamlit gold-mart explorer
+app_genie.py      Streamlit Ask (Genie) over the semantic layer
 notebooks/        Databricks notebooks (bootstrap → bronze → silver → gold → reconcile)
 pipelines/        Lakeflow Declarative Pipeline (streaming tables + MVs + expectations)
 resources/        Asset Bundle job + pipeline
 setup/            UC catalogs/schemas/volume + PII masks (SQL)
 monitoring/       Lakehouse Monitoring setup (profile/drift)
 governance/       governance as code: access.yaml + sharing.yaml -> SQL + manifest
+semantic/         semantic layer: metrics.yaml -> BI SQL + Genie space + Ask
 scripts/          promote.sh (dev → uat → prod)
-docs/             architecture · naming · data-model · governance · slas-and-dr · ci-cd
-tests/            contracts + end-to-end medallion + governance
+docs/             architecture · naming · data-model · governance · slas-and-dr · ci-cd · semantic-layer
+tests/            contracts + end-to-end medallion + governance + semantic
 ```
 
 ## Governance as code + Delta Sharing
@@ -84,11 +86,27 @@ Sharing**. See `docs/governance.md`.
 ```bash
 pip install -r requirements-streamlit.txt
 python -m lakehouse run        # build the gold marts
-streamlit run app.py
+streamlit run app.py           # gold-mart explorer
+streamlit run app_genie.py     # Ask (Genie) over the semantic layer
 ```
 
 A small explorer over the gold marts: pick a mart, see row/column counts, browse
 the table, chart a numeric column grouped by a category, and download CSV.
+
+## Semantic layer + Genie
+
+`semantic/metrics.yaml` defines the business metrics (measure, dimensions,
+synonyms) once; it drives BI SQL, a **Databricks AI/BI Genie space**, and a
+natural-language **Ask** experience.
+
+```bash
+python -m semantic metrics
+python -m semantic sql total_card_spend --by segment
+python -m semantic genie                     # -> semantic/generated/genie_space.json
+python -m semantic ask "card spend by segment?" --run
+```
+
+See `docs/semantic-layer.md`.
 
 ## Deploy to Databricks (Asset Bundle)
 

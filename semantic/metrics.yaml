@@ -1,0 +1,110 @@
+# Semantic layer over the gold marts.
+# Each metric declares its measure, allowed dimensions and natural-language
+# synonyms — this drives BI SQL generation AND the Genie space.
+catalog: bank_dev
+
+metrics:
+  - name: total_card_spend
+    description: Total posted card spend
+    table: gold.card_spend_by_segment
+    measure: "SUM(spend)"
+    dimensions: [segment, month]
+    synonyms: [card spend, card spending, spending, card revenue]
+    question: "What is card spend by segment?"
+
+  - name: card_txn_count
+    description: Number of posted card transactions
+    table: gold.card_spend_by_segment
+    measure: "SUM(txns)"
+    dimensions: [segment, month]
+    synonyms: [card transactions, card txns, card volume]
+    question: "How many card transactions by month?"
+
+  - name: customer_count
+    description: Number of customers
+    table: gold.customer_360
+    measure: "COUNT(*)"
+    dimensions: [segment, country, kyc_status]
+    synonyms: [customers, customer count, how many customers]
+    question: "How many customers by segment?"
+
+  - name: total_balance
+    description: Total account balance (active accounts)
+    table: gold.customer_360
+    measure: "SUM(total_balance)"
+    dimensions: [segment, country]
+    synonyms: [balance, deposits, total balance, book size]
+    question: "What is total balance by segment?"
+
+  - name: payments_value
+    description: Settled payments value (base currency)
+    table: gold.payments_flow
+    measure: "SUM(amount_base)"
+    dimensions: [channel, direction, month]
+    synonyms: [payments, payment value, payment flow, transfers]
+    question: "What is payments value by channel?"
+
+  - name: loan_outstanding
+    description: Outstanding loan balance (base currency)
+    table: gold.loan_portfolio
+    measure: "SUM(outstanding_base)"
+    dimensions: [product_type, status]
+    synonyms: [loans, loan book, outstanding, lending]
+    question: "What is outstanding loans by product?"
+
+  - name: delinquency_rate
+    description: Average delinquency rate
+    table: gold.loan_risk_by_segment
+    measure: "AVG(delinquency_rate)"
+    dimensions: [segment]
+    synonyms: [delinquency, npl, default rate, arrears]
+    question: "What is the delinquency rate by segment?"
+
+  - name: account_balance
+    description: Account balances by type
+    table: gold.account_balances
+    measure: "SUM(balance_base)"
+    dimensions: [account_type, status]
+    synonyms: [account balance, balances, accounts]
+    question: "What is the balance by account type?"
+
+  - name: risk_ead
+    description: Exposure at default by rating
+    table: gold.risk_exposure_by_rating
+    measure: "SUM(ead_base)"
+    dimensions: [rating]
+    synonyms: [ead, exposure, credit exposure, risk exposure]
+    question: "What is exposure at default by rating?"
+
+  - name: expected_loss
+    description: Expected credit loss by rating
+    table: gold.risk_exposure_by_rating
+    measure: "SUM(expected_loss)"
+    dimensions: [rating]
+    synonyms: [expected loss, credit loss, ecl]
+    question: "What is expected loss by rating?"
+
+  - name: limit_utilisation
+    description: Average limit utilisation by exposure type
+    table: gold.risk_limit_utilisation
+    measure: "AVG(utilisation)"
+    dimensions: [exposure_type]
+    synonyms: [utilisation, utilization, limit usage]
+    question: "What is limit utilisation by exposure type?"
+
+  - name: aml_alerts
+    description: AML alerts by status
+    table: gold.aml_alert_summary
+    measure: "SUM(alerts)"
+    dimensions: [status]
+    synonyms: [aml alerts, alerts, suspicious activity, financial crime]
+    question: "How many AML alerts by status?"
+
+  - name: high_risk_customers
+    description: Customers with 5+ AML alerts
+    table: gold.aml_high_risk_customers
+    measure: "COUNT(*)"
+    dimensions: [customer_id]
+    filter: "alerts >= 5"
+    synonyms: [high risk customers, flagged customers, suspicious customers]
+    question: "How many high-risk customers are there?"
