@@ -183,3 +183,26 @@ alerts.subtract(goodam).write.mode("overwrite").saveAsTable(f"{catalog}.silver.a
 print("silver:", good.count(), "customers,", goodc.count(), "txns,",
       goodp.count(), "payments,", goodl.count(), "loans,",
       gooda.count(), "accounts,", goodr.count(), "exposures,", goodam.count(), "alerts")
+
+# COMMAND ----------
+
+# MAGIC %md ## regulatory_return (cast, FX to base, quality gate)
+reg = (spark.table(f"{catalog}.bronze.regulatory_return")
+       .withColumn("value", F.col("value").cast("double"))
+       .withColumn("version", F.col("version").cast("int"))
+       .withColumn("reporting_date", F.to_date("reporting_date"))
+       .withColumn("submitted_date", F.to_date("submitted_date"))
+       .withColumn("report_code", F.upper(F.trim("report_code")))
+       .withColumn("metric_name", F.upper(F.trim("metric_name")))
+       .withColumn("status", F.upper(F.trim("status")))
+       .drop("_ingested_at", "_source_file")
+       .join(fx.select("ccy", "fx_rate"), "ccy", "left")
+       .withColumn("value_base", F.round(F.col("value") * F.col("fx_rate"), 2)))
+wg = Window.partitionBy("return_id").orderBy(F.monotonic_increasing_id())
+reg = reg.withColumn("__rn", F.row_number().over(wg)).filter("__rn = 1").drop("__rn")
+goodg = reg.filter(F.col("return_id").isNotNull() & F.col("report_code").isNotNull()
+                   & F.col("metric_name").isNotNull() & F.col("value").isNotNull()
+                   & F.col("status").isin("DRAFT", "SUBMITTED", "ACCEPTED", "REJECTED"))
+goodg.write.mode("overwrite").saveAsTable(f"{catalog}.silver.regulatory_return")
+reg.subtract(goodg).write.mode("overwrite").saveAsTable(f"{catalog}.silver.regulatory_return_rejected")
+print("regulatory:", goodg.count(), "returns")

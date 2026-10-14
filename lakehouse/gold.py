@@ -162,6 +162,34 @@ def build(spark, env: Env) -> dict:
     high_risk.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "aml_high_risk_customers"))
 
+    # ---- regulatory marts ----
+    reg = spark.read.format("delta").load(env.table("silver", "regulatory_return"))
+
+    by_report = (reg.groupBy("report_code", "entity")
+                 .agg(F.count("return_id").alias("returns"),
+                      F.round(F.sum("value_base"), 2).alias("value_base"),
+                      F.sum(F.when(F.col("status") == "ACCEPTED", 1).otherwise(0)).alias("accepted"),
+                      F.round(F.sum(F.when(F.col("status") == "ACCEPTED", 1).otherwise(0))
+                              / F.count("return_id"), 4).alias("acceptance_rate"))
+                 .orderBy("report_code", "entity"))
+    by_report.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "regulatory_by_report"))
+
+    by_status_reg = (reg.groupBy("status")
+                     .agg(F.count("return_id").alias("submissions"),
+                          F.round(F.sum("value_base"), 2).alias("value_base"))
+                     .orderBy("status"))
+    by_status_reg.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "regulatory_submission_status"))
+
+    by_metric = (reg.groupBy("report_code", "metric_name")
+                 .agg(F.count("return_id").alias("submissions"),
+                      F.round(F.sum("value_base"), 2).alias("value_base"),
+                      F.round(F.avg("value_base"), 2).alias("avg_value"))
+                 .orderBy("report_code", "metric_name"))
+    by_metric.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "regulatory_by_metric"))
+
     return {"customer_360": c360.count(),
             "card_spend_by_segment": seg.count(),
             "payments_flow": flow.count(),
@@ -174,4 +202,7 @@ def build(spark, env: Env) -> dict:
             "risk_limit_utilisation": limits.count(),
             "aml_alerts_by_rule": by_rule.count(),
             "aml_alert_summary": by_status.count(),
-            "aml_high_risk_customers": high_risk.count()}
+            "aml_high_risk_customers": high_risk.count(),
+            "regulatory_by_report": by_report.count(),
+            "regulatory_submission_status": by_status_reg.count(),
+            "regulatory_by_metric": by_metric.count()}

@@ -59,6 +59,11 @@ extends to the full bank.
 `source_ref`, `ccy`, `amount`, `amount_base`, `score`, `alert_date`, `status`,
 `assigned_to`.
 
+### `silver.regulatory_return` (contract: `regulatory_return.contract.yaml`)
+`return_id (PK)`, `report_code`, `reporting_date`, `entity`, `metric_name`, `value`,
+`ccy`, `version`, `submitted_by`, `status`, `submitted_date`, `fx_rate`,
+`value_base`.
+
 ### `gold.customer_360`
 `customer_id`, `segment`, `country`, `kyc_status`, `total_spend`, `txn_count`,
 `last_txn_ts`, `total_balance`.
@@ -102,6 +107,15 @@ extends to the full bank.
 
 ### `gold.aml_high_risk_customers`
 `customer_id`, `alerts`, `rules`, `amount_base`, `max_score`.
+
+### `gold.regulatory_by_report`
+`report_code`, `entity`, `returns`, `value_base`, `accepted`, `acceptance_rate`.
+
+### `gold.regulatory_submission_status`
+`status`, `submissions`, `value_base`.
+
+### `gold.regulatory_by_metric`
+`report_code`, `metric_name`, `submissions`, `value_base`, `avg_value`.
 
 ## Relationships
 ```

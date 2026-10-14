@@ -1,0 +1,22 @@
+name: regulatory_return
+source: regulatory_return
+target_layer: silver
+target_table: regulatory_return
+primary_key: return_id
+columns:
+  - { name: return_id,      type: string }
+  - { name: report_code,    type: string }
+  - { name: reporting_date, type: date }
+  - { name: entity,         type: string }
+  - { name: metric_name,    type: string }
+  - { name: value,          type: decimal }
+  - { name: ccy,            type: string }
+  - { name: version,        type: int }
+  - { name: submitted_by,   type: string }
+  - { name: status,         type: string }
+  - { name: submitted_date, type: date }
+not_null: [return_id, report_code, metric_name, value, status]
+allowed:
+  report_code: [COREP, FINREP, BASEL3, CCAR, FRTB, LCR]
+  status: [DRAFT, SUBMITTED, ACCEPTED, REJECTED]
+pii: {}

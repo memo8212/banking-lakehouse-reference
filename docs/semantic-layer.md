@@ -54,6 +54,16 @@ Databricks **AI/BI Genie** space:
 Genie uses the instructions + sample questions + trusted assets to ground its
 text-to-SQL, so answers stay on the curated gold marts.
 
+Apply it to a workspace (needs a SQL warehouse id):
+
+```bash
+python -m semantic.apply_genie --warehouse-id <id>          # create
+python -m semantic.apply_genie --space-id <id> --warehouse-id <id>   # update
+```
+
+It builds the payload and calls the SDK; if the API isn't reachable it writes
+`semantic/generated/genie_space.json` to paste into the Genie UI.
+
 ## Ask (offline-first)
 
 `semantic/ask.py` scores a question against metric names, descriptions and

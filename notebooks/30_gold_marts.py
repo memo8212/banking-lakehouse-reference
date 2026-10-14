@@ -154,4 +154,31 @@ alerts = spark.table(f"{catalog}.silver.aml_alerts")
             F.round(F.max("score"), 3).alias("max_score"))
        .orderBy(F.col("alerts").desc(), F.col("max_score").desc())
        .write.mode("overwrite").saveAsTable(f"{catalog}.gold.aml_high_risk_customers"))
-display(spark.table(f"{catalog}.gold.aml_alert_summary"))
+
+# COMMAND ----------
+
+# MAGIC %md ## regulatory marts (by report, by status, by metric)
+reg = spark.table(f"{catalog}.silver.regulatory_return")
+
+(reg.groupBy("report_code", "entity")
+    .agg(F.count("return_id").alias("returns"),
+         F.round(F.sum("value_base"), 2).alias("value_base"),
+         F.sum(F.when(F.col("status") == "ACCEPTED", 1).otherwise(0)).alias("accepted"),
+         F.round(F.sum(F.when(F.col("status") == "ACCEPTED", 1).otherwise(0))
+                 / F.count("return_id"), 4).alias("acceptance_rate"))
+    .orderBy("report_code", "entity")
+    .write.mode("overwrite").saveAsTable(f"{catalog}.gold.regulatory_by_report"))
+
+(reg.groupBy("status")
+    .agg(F.count("return_id").alias("submissions"),
+         F.round(F.sum("value_base"), 2).alias("value_base"))
+    .orderBy("status")
+    .write.mode("overwrite").saveAsTable(f"{catalog}.gold.regulatory_submission_status"))
+
+(reg.groupBy("report_code", "metric_name")
+    .agg(F.count("return_id").alias("submissions"),
+         F.round(F.sum("value_base"), 2).alias("value_base"),
+         F.round(F.avg("value_base"), 2).alias("avg_value"))
+    .orderBy("report_code", "metric_name")
+    .write.mode("overwrite").saveAsTable(f"{catalog}.gold.regulatory_by_metric"))
+display(spark.table(f"{catalog}.gold.regulatory_by_report"))

@@ -244,6 +244,36 @@ def gen_aml_alerts(path: Path, n_customers: int = 2000, n_rules: int = 10,
                         0.5, "2026-01-01", "OPEN", "analyst01"])
 
 
+REPORT_CODES = ["COREP", "FINREP", "BASEL3", "CCAR", "FRTB", "LCR"]
+REG_STATUS = ["DRAFT", "SUBMITTED", "SUBMITTED", "ACCEPTED", "REJECTED"]
+ENTITIES = ["BANK_CA", "BANK_US", "BANK_UK", "BANK_EU"]
+REG_METRICS = ["CAPITAL_RATIO", "RWA", "LIQUIDITY_COVERAGE", "LEVERAGE",
+               "NET_STABLE_FUNDING", "LCR_RATIO"]
+
+
+def gen_regulatory(path: Path, n: int = 5000, seed: int = 19) -> None:
+    rng = random.Random(seed)
+    start = date(2025, 1, 1)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["return_id", "report_code", "reporting_date", "entity",
+                    "metric_name", "value", "ccy", "version", "submitted_by",
+                    "status", "submitted_date"])
+        for i in range(1, n + 1):
+            rdate = start + timedelta(days=rng.randrange(365))
+            w.writerow([
+                f"RET{i:08d}", rng.choice(REPORT_CODES), rdate.isoformat(),
+                rng.choice(ENTITIES), rng.choice(REG_METRICS),
+                round(rng.uniform(0, 50_000_000_000), 2), rng.choice(CCYS),
+                rng.randint(1, 3), rng.choice(ANALYSTS),
+                "BOGUS" if i % 800 == 0 else rng.choice(REG_STATUS),
+                (rdate + timedelta(days=rng.randrange(1, 30))).isoformat(),
+            ])
+        for j in range(10):
+            w.writerow([f"RETBAD{j:05d}", "COREP", "2025-01-01", "BANK_CA", "RWA",
+                        0.0, "CAD", 1, "analyst01", "DRAFT", "2025-01-02"])
+
+
 if __name__ == "__main__":
     gen_customers(DATA / "customer.csv")
     gen_cards(DATA / "cards_txn.csv")
@@ -253,6 +283,7 @@ if __name__ == "__main__":
     gen_risk(DATA / "risk_exposure.csv")
     gen_aml_rules(DATA / "aml_rules.csv")
     gen_aml_alerts(DATA / "aml_alerts.csv")
+    gen_regulatory(DATA / "regulatory_return.csv")
     gen_fx(DATA / "fx_rates.csv")
     print("wrote", DATA / "customer.csv")
     print("wrote", DATA / "cards_txn.csv")
@@ -262,4 +293,5 @@ if __name__ == "__main__":
     print("wrote", DATA / "risk_exposure.csv")
     print("wrote", DATA / "aml_rules.csv")
     print("wrote", DATA / "aml_alerts.csv")
+    print("wrote", DATA / "regulatory_return.csv")
     print("wrote", DATA / "fx_rates.csv")

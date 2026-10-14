@@ -91,6 +91,15 @@ def bronze_aml_alerts():
             .withColumn("_ingested_at", F.current_timestamp())
             .withColumn("_source_file", F.lit("aml_alerts.csv")))
 
+@dp.table(name="bronze_regulatory_return", comment="raw regulatory returns")
+def bronze_regulatory_return():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/regulatory_return")
+            .load(f"{LANDING}/regulatory_return")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("regulatory_return.csv")))
+
 # COMMAND ----------
 
 # MAGIC %md ## Silver — conformed + masked + quality expectations
@@ -166,6 +175,14 @@ def silver_aml_alerts():
     return (dp.read_stream("bronze_aml_alerts")
             .withColumn("amount", F.col("amount").cast("double"))
             .withColumn("score", F.col("score").cast("double"))
+            .withColumn("status", F.upper(F.trim("status"))))
+
+@dp.table(name="silver_regulatory_return", comment="conformed regulatory returns")
+@dp.expect_or_drop("valid_status", "status IN ('DRAFT','SUBMITTED','ACCEPTED','REJECTED')")
+def silver_regulatory_return():
+    return (dp.read_stream("bronze_regulatory_return")
+            .withColumn("value", F.col("value").cast("double"))
+            .withColumn("report_code", F.upper(F.trim("report_code")))
             .withColumn("status", F.upper(F.trim("status"))))
 
 # COMMAND ----------

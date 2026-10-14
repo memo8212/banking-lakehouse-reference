@@ -24,5 +24,5 @@ def test_sharing_sql_and_manifest():
     m = share_manifest(sharing)
     assert m["share"] == "bank_gold_share"
     assert m["recipient"] == "regulator_acme"
-    assert m["table_count"] == 7
+    assert m["table_count"] == 8
     assert m["content_hash"] == share_manifest(load_sharing())["content_hash"]  # deterministic

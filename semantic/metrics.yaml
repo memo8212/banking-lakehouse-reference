@@ -108,3 +108,27 @@ metrics:
     filter: "alerts >= 5"
     synonyms: [high risk customers, flagged customers, suspicious customers]
     question: "How many high-risk customers are there?"
+
+  - name: regulatory_value
+    description: Regulatory return value (base currency)
+    table: gold.regulatory_by_report
+    measure: "SUM(value_base)"
+    dimensions: [report_code, entity]
+    synonyms: [regulatory returns, reporting value, submissions value]
+    question: "What is the regulatory return value by report?"
+
+  - name: regulatory_acceptance_rate
+    description: Average acceptance rate of regulatory returns
+    table: gold.regulatory_by_report
+    measure: "AVG(acceptance_rate)"
+    dimensions: [report_code]
+    synonyms: [acceptance rate, accepted returns, regulatory acceptance]
+    question: "What is the regulatory acceptance rate by report?"
+
+  - name: regulatory_submissions
+    description: Regulatory submissions by status
+    table: gold.regulatory_submission_status
+    measure: "SUM(submissions)"
+    dimensions: [status]
+    synonyms: [submissions, regulatory status, rejected returns]
+    question: "How many regulatory submissions by status?"

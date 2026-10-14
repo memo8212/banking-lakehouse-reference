@@ -39,6 +39,9 @@ def main() -> int:
         f"{args.catalog}.gold.aml_alerts_by_rule",
         f"{args.catalog}.gold.aml_alert_summary",
         f"{args.catalog}.gold.aml_high_risk_customers",
+        f"{args.catalog}.gold.regulatory_by_report",
+        f"{args.catalog}.gold.regulatory_submission_status",
+        f"{args.catalog}.gold.regulatory_by_metric",
     ]
 
     for table in tables:

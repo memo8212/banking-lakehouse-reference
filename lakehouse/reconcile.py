@@ -6,77 +6,48 @@ from pyspark.sql import functions as F
 from lakehouse.config import Env
 
 
+def _close(a, b, tol: float = 0.01) -> bool:
+    """Absolute OR relative closeness (large money sums lose float precision)."""
+    a, b = float(a), float(b)
+    return abs(a - b) <= max(tol, 1e-9 * abs(a))
+
+
 def reconcile(spark, env: Env) -> list[dict]:
     results: list[dict] = []
 
     for name in ("customer", "cards_txn", "payments", "loans", "accounts",
-                 "risk_exposure", "aml_rules", "aml_alerts"):
+                 "risk_exposure", "aml_rules", "aml_alerts", "regulatory_return"):
         src = spark.read.option("header", True).csv(f"{env.source_dir}/{name}.csv").count()
         brz = spark.read.format("delta").load(env.table("bronze", name)).count()
         results.append({"check": f"{name}: source vs bronze row-count",
                         "status": "PASSED" if src == brz else "FAILED",
                         "expected": src, "actual": brz})
 
-    silver = (spark.read.format("delta").load(env.table("silver", "cards_txn"))
-              .filter(F.col("status") == "POSTED"))
-    gold = spark.read.format("delta").load(env.table("gold", "customer_360"))
-    s_sum = silver.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
-    g_sum = gold.agg(F.coalesce(F.sum("total_spend"), F.lit(0.0))).first()[0]
-    ok = abs(float(s_sum) - float(g_sum)) < 0.01
-    results.append({"check": "gold total_spend vs silver posted amount_base",
-                    "status": "PASSED" if ok else "FAILED",
-                    "expected": round(float(s_sum), 2), "actual": round(float(g_sum), 2)})
+    def compare(label: str, silver_table: str, silver_filter: str,
+                gold_table: str, col: str, gold_col: str | None = None) -> None:
+        sdf = spark.read.format("delta").load(env.table("silver", silver_table))
+        if silver_filter:
+            sdf = sdf.filter(silver_filter)
+        gdf = spark.read.format("delta").load(env.table("gold", gold_table))
+        a = sdf.agg(F.coalesce(F.sum(col), F.lit(0.0))).first()[0]
+        b = gdf.agg(F.coalesce(F.sum(gold_col or col), F.lit(0.0))).first()[0]
+        results.append({"check": label, "status": "PASSED" if _close(a, b) else "FAILED",
+                        "expected": round(float(a), 2), "actual": round(float(b), 2)})
 
-    # payments: gold flow total vs silver settled amount_base
-    pay_silver = (spark.read.format("delta").load(env.table("silver", "payments"))
-                  .filter(F.col("status") == "SETTLED"))
-    pay_gold = spark.read.format("delta").load(env.table("gold", "payments_flow"))
-    ps = pay_silver.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
-    pg = pay_gold.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
-    pok = abs(float(ps) - float(pg)) < 0.01
-    results.append({"check": "gold payments_flow vs silver settled amount_base",
-                    "status": "PASSED" if pok else "FAILED",
-                    "expected": round(float(ps), 2), "actual": round(float(pg), 2)})
-
-    # loans: gold portfolio outstanding vs silver outstanding
-    loan_silver = spark.read.format("delta").load(env.table("silver", "loans"))
-    loan_gold = spark.read.format("delta").load(env.table("gold", "loan_portfolio"))
-    ls = loan_silver.agg(F.coalesce(F.sum("outstanding_base"), F.lit(0.0))).first()[0]
-    lg = loan_gold.agg(F.coalesce(F.sum("outstanding_base"), F.lit(0.0))).first()[0]
-    lok = abs(float(ls) - float(lg)) < 0.01
-    results.append({"check": "gold loan_portfolio vs silver outstanding_base",
-                    "status": "PASSED" if lok else "FAILED",
-                    "expected": round(float(ls), 2), "actual": round(float(lg), 2)})
-
-    # accounts: gold account_balances total vs silver balance
-    acct_silver = spark.read.format("delta").load(env.table("silver", "accounts"))
-    acct_gold = spark.read.format("delta").load(env.table("gold", "account_balances"))
-    asum = acct_silver.agg(F.coalesce(F.sum("balance_base"), F.lit(0.0))).first()[0]
-    agsum = acct_gold.agg(F.coalesce(F.sum("balance_base"), F.lit(0.0))).first()[0]
-    aok = abs(float(asum) - float(agsum)) < 0.01
-    results.append({"check": "gold account_balances vs silver balance_base",
-                    "status": "PASSED" if aok else "FAILED",
-                    "expected": round(float(asum), 2), "actual": round(float(agsum), 2)})
-
-    # risk: gold risk_exposure_by_rating ead vs silver ead
-    risk_silver = spark.read.format("delta").load(env.table("silver", "risk_exposure"))
-    risk_gold = spark.read.format("delta").load(env.table("gold", "risk_exposure_by_rating"))
-    rs = risk_silver.agg(F.coalesce(F.sum("ead_base"), F.lit(0.0))).first()[0]
-    rg = risk_gold.agg(F.coalesce(F.sum("ead_base"), F.lit(0.0))).first()[0]
-    rok = abs(float(rs) - float(rg)) < 0.01
-    results.append({"check": "gold risk_exposure_by_rating vs silver ead_base",
-                    "status": "PASSED" if rok else "FAILED",
-                    "expected": round(float(rs), 2), "actual": round(float(rg), 2)})
-
-    # AML: gold aml_alerts_by_rule amount vs silver alerts
-    aml_silver = spark.read.format("delta").load(env.table("silver", "aml_alerts"))
-    aml_gold = spark.read.format("delta").load(env.table("gold", "aml_alerts_by_rule"))
-    ams = aml_silver.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
-    amg = aml_gold.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
-    amok = abs(float(ams) - float(amg)) < 0.01
-    results.append({"check": "gold aml_alerts_by_rule vs silver amount_base",
-                    "status": "PASSED" if amok else "FAILED",
-                    "expected": round(float(ams), 2), "actual": round(float(amg), 2)})
+    compare("gold total_spend vs silver posted amount_base",
+            "cards_txn", "status = 'POSTED'", "customer_360", "amount_base", "total_spend")
+    compare("gold payments_flow vs silver settled amount_base",
+            "payments", "status = 'SETTLED'", "payments_flow", "amount_base")
+    compare("gold loan_portfolio vs silver outstanding_base",
+            "loans", "", "loan_portfolio", "outstanding_base")
+    compare("gold account_balances vs silver balance_base",
+            "accounts", "", "account_balances", "balance_base")
+    compare("gold risk_exposure_by_rating vs silver ead_base",
+            "risk_exposure", "", "risk_exposure_by_rating", "ead_base")
+    compare("gold aml_alerts_by_rule vs silver amount_base",
+            "aml_alerts", "", "aml_alerts_by_rule", "amount_base")
+    compare("gold regulatory_by_report vs silver value_base",
+            "regulatory_return", "", "regulatory_by_report", "value_base")
 
     results.append({"check": "silver customer rejects (<=5% tolerance)",
                     "status": "PASSED", "expected": "n/a",

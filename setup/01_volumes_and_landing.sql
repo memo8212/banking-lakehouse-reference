@@ -52,6 +52,11 @@ CREATE TABLE IF NOT EXISTS bank_dev.bronze.aml_alerts (
   source_ref STRING, ccy STRING, amount STRING, score STRING, alert_date STRING,
   status STRING, assigned_to STRING, _ingested_at TIMESTAMP, _source_file STRING);
 
+CREATE TABLE IF NOT EXISTS bank_dev.bronze.regulatory_return (
+  return_id STRING, report_code STRING, reporting_date STRING, entity STRING,
+  metric_name STRING, value STRING, ccy STRING, version STRING, submitted_by STRING,
+  status STRING, submitted_date STRING, _ingested_at TIMESTAMP, _source_file STRING);
+
 -- File registry (file-level lineage)
 CREATE TABLE IF NOT EXISTS bank_dev.bronze.file_registry (
   file_name STRING, path STRING, size BIGINT, md5 STRING, lines BIGINT);
@@ -117,6 +122,13 @@ CREATE TABLE IF NOT EXISTS bank_dev.silver.aml_alerts (
   CONSTRAINT pk_aml_alerts PRIMARY KEY (alert_id))
   COMMENT 'contract aml_alerts.contract.yaml';
 
+CREATE TABLE IF NOT EXISTS bank_dev.silver.regulatory_return (
+  return_id STRING NOT NULL, report_code STRING, reporting_date DATE, entity STRING,
+  metric_name STRING, value DOUBLE, ccy STRING, version INT, submitted_by STRING,
+  status STRING, submitted_date DATE, fx_rate DOUBLE, value_base DOUBLE,
+  CONSTRAINT pk_regulatory_return PRIMARY KEY (return_id))
+  COMMENT 'contract regulatory_return.contract.yaml';
+
 -- Gold (domain marts)
 CREATE TABLE IF NOT EXISTS bank_dev.gold.customer_360 (
   customer_id STRING, segment STRING, country STRING, kyc_status STRING,
@@ -181,5 +193,19 @@ CREATE TABLE IF NOT EXISTS bank_dev.gold.aml_high_risk_customers (
   customer_id STRING, alerts BIGINT, rules BIGINT, amount_base DECIMAL(18,2),
   max_score DOUBLE)
   CLUSTER BY (customer_id);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.regulatory_by_report (
+  report_code STRING, entity STRING, returns BIGINT, value_base DECIMAL(18,2),
+  accepted BIGINT, acceptance_rate DOUBLE)
+  CLUSTER BY (report_code);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.regulatory_submission_status (
+  status STRING, submissions BIGINT, value_base DECIMAL(18,2))
+  CLUSTER BY (status);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.regulatory_by_metric (
+  report_code STRING, metric_name STRING, submissions BIGINT, value_base DECIMAL(18,2),
+  avg_value DECIMAL(18,2))
+  CLUSTER BY (report_code);
 
 SELECT 'landing + tables ready' AS status;

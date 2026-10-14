@@ -9,7 +9,7 @@ from pyspark.sql import functions as F
 from lakehouse.config import Env
 
 SOURCES = ["customer", "cards_txn", "payments", "loans", "accounts", "risk_exposure",
-           "aml_rules", "aml_alerts", "fx_rates"]
+           "aml_rules", "aml_alerts", "regulatory_return", "fx_rates"]
 
 
 def file_registry(spark, source_dir: str):

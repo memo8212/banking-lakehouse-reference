@@ -185,4 +185,20 @@ def conform(spark, env: Env, contracts: dict) -> dict:
               .withColumn("amount_base", F.round(F.col("amount") * F.col("fx_rate"), 2)))
     alerts = _dedupe(alerts, aa.primary_key)
     _split_and_write(spark, env, alerts, aa, report)
+
+    # ---- regulatory_return ----
+    rg = contracts["regulatory_return"]
+    reg = (spark.read.format("delta").load(env.table("bronze", "regulatory_return"))
+           .withColumn("value", F.col("value").cast("double"))
+           .withColumn("version", F.col("version").cast("int"))
+           .withColumn("reporting_date", F.to_date("reporting_date"))
+           .withColumn("submitted_date", F.to_date("submitted_date"))
+           .withColumn("report_code", F.upper(F.trim("report_code")))
+           .withColumn("metric_name", F.upper(F.trim("metric_name")))
+           .withColumn("status", F.upper(F.trim("status")))
+           .withColumn("ccy", F.upper(F.trim("ccy"))))
+    reg = reg.join(fx.select("ccy", "fx_rate"), on="ccy", how="left") \
+             .withColumn("value_base", F.round(F.col("value") * F.col("fx_rate"), 2))
+    reg = _dedupe(reg, rg.primary_key)
+    _split_and_write(spark, env, reg, rg, report)
     return report
