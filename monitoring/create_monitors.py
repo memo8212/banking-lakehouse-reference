@@ -42,6 +42,8 @@ def main() -> int:
         f"{args.catalog}.gold.regulatory_by_report",
         f"{args.catalog}.gold.regulatory_submission_status",
         f"{args.catalog}.gold.regulatory_by_metric",
+        f"{args.catalog}.gold.deposit_portfolio",
+        f"{args.catalog}.gold.deposit_maturity_ladder",
     ]
 
     for table in tables:

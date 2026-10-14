@@ -201,4 +201,23 @@ def conform(spark, env: Env, contracts: dict) -> dict:
              .withColumn("value_base", F.round(F.col("value") * F.col("fx_rate"), 2))
     reg = _dedupe(reg, rg.primary_key)
     _split_and_write(spark, env, reg, rg, report)
+
+    # ---- deposits ----
+    dp = contracts["deposits"]
+    dep = (spark.read.format("delta").load(env.table("bronze", "deposits"))
+           .withColumn("principal", F.col("principal").cast("double"))
+           .withColumn("accrued_interest", F.col("accrued_interest").cast("double"))
+           .withColumn("interest_rate", F.col("interest_rate").cast("double"))
+           .withColumn("term_months", F.col("term_months").cast("int"))
+           .withColumn("opened_date", F.to_date("opened_date"))
+           .withColumn("maturity_date", F.to_date("maturity_date"))
+           .withColumn("deposit_type", F.upper(F.trim("deposit_type")))
+           .withColumn("status", F.upper(F.trim("status")))
+           .withColumn("ccy", F.upper(F.trim("ccy"))))
+    dep = _apply_pii(dep, dp)
+    dep = dep.join(fx.select("ccy", "fx_rate"), on="ccy", how="left") \
+             .withColumn("principal_base", F.round(F.col("principal") * F.col("fx_rate"), 2)) \
+             .withColumn("accrued_interest_base", F.round(F.col("accrued_interest") * F.col("fx_rate"), 2))
+    dep = _dedupe(dep, dp.primary_key)
+    _split_and_write(spark, env, dep, dp, report)
     return report

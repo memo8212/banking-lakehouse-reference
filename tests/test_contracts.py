@@ -5,7 +5,8 @@ from lakehouse.contracts import load_contracts, validate
 def test_load_contracts():
     contracts = load_contracts()
     assert {"customer", "cards_txn", "payments", "loans", "accounts",
-            "risk_exposure", "aml_rules", "aml_alerts", "regulatory_return"} <= set(contracts)
+            "risk_exposure", "aml_rules", "aml_alerts", "regulatory_return",
+            "deposits"} <= set(contracts)
     c = contracts["customer"]
     assert c.primary_key == "customer_id"
     assert c.pii["email"] == "tokenize"

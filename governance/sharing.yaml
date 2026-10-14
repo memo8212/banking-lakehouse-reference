@@ -10,3 +10,4 @@ tables:
   - bank_dev.gold.risk_exposure_by_rating
   - bank_dev.gold.aml_alert_summary
   - bank_dev.gold.regulatory_submission_status
+  - bank_dev.gold.deposit_portfolio

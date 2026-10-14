@@ -16,7 +16,8 @@ def reconcile(spark, env: Env) -> list[dict]:
     results: list[dict] = []
 
     for name in ("customer", "cards_txn", "payments", "loans", "accounts",
-                 "risk_exposure", "aml_rules", "aml_alerts", "regulatory_return"):
+                 "risk_exposure", "aml_rules", "aml_alerts", "regulatory_return",
+                 "deposits"):
         src = spark.read.option("header", True).csv(f"{env.source_dir}/{name}.csv").count()
         brz = spark.read.format("delta").load(env.table("bronze", name)).count()
         results.append({"check": f"{name}: source vs bronze row-count",
@@ -48,6 +49,8 @@ def reconcile(spark, env: Env) -> list[dict]:
             "aml_alerts", "", "aml_alerts_by_rule", "amount_base")
     compare("gold regulatory_by_report vs silver value_base",
             "regulatory_return", "", "regulatory_by_report", "value_base")
+    compare("gold deposit_portfolio vs silver principal_base",
+            "deposits", "", "deposit_portfolio", "principal_base")
 
     results.append({"check": "silver customer rejects (<=5% tolerance)",
                     "status": "PASSED", "expected": "n/a",

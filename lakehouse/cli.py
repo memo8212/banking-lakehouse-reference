@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from lakehouse.config import Env
@@ -15,12 +16,16 @@ from lakehouse.reconcile import reconcile, report_md
 def make_spark(app: str = "bank_lakehouse"):
     from delta import configure_spark_with_delta_pip
     from pyspark.sql import SparkSession
-    builder = (SparkSession.builder.master("local[*]").appName(app)
+    master = os.environ.get("BANK_SPARK_MASTER", "local[*]")
+    driver_mem = os.environ.get("BANK_SPARK_DRIVER_MEMORY")
+    builder = (SparkSession.builder.master(master).appName(app)
                .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
                .config("spark.sql.catalog.spark_catalog",
                        "org.apache.spark.sql.delta.catalog.DeltaCatalog")
                .config("spark.sql.shuffle.partitions", "8")
                .config("spark.ui.enabled", "false"))
+    if driver_mem:
+        builder = builder.config("spark.driver.memory", driver_mem)
     spark = configure_spark_with_delta_pip(builder).getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
     return spark

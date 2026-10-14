@@ -132,3 +132,19 @@ metrics:
     dimensions: [status]
     synonyms: [submissions, regulatory status, rejected returns]
     question: "How many regulatory submissions by status?"
+
+  - name: deposit_principal
+    description: Deposit principal outstanding (base currency)
+    table: gold.deposit_portfolio
+    measure: "SUM(principal_base)"
+    dimensions: [deposit_type, status]
+    synonyms: [deposits, deposit balances, term deposits, principal]
+    question: "What is the deposit principal by type and status?"
+
+  - name: deposit_avg_rate
+    description: Average interest rate paid on deposits
+    table: gold.deposit_portfolio
+    measure: "AVG(avg_rate)"
+    dimensions: [deposit_type]
+    synonyms: [deposit rate, interest rate, savings rate]
+    question: "What is the average deposit rate by type?"

@@ -57,6 +57,12 @@ CREATE TABLE IF NOT EXISTS bank_dev.bronze.regulatory_return (
   metric_name STRING, value STRING, ccy STRING, version STRING, submitted_by STRING,
   status STRING, submitted_date STRING, _ingested_at TIMESTAMP, _source_file STRING);
 
+CREATE TABLE IF NOT EXISTS bank_dev.bronze.deposits (
+  deposit_id STRING, account_id STRING, customer_id STRING, deposit_type STRING,
+  principal STRING, ccy STRING, interest_rate STRING, term_months STRING,
+  opened_date STRING, maturity_date STRING, accrued_interest STRING, status STRING,
+  branch STRING, _ingested_at TIMESTAMP, _source_file STRING);
+
 -- File registry (file-level lineage)
 CREATE TABLE IF NOT EXISTS bank_dev.bronze.file_registry (
   file_name STRING, path STRING, size BIGINT, md5 STRING, lines BIGINT);
@@ -128,6 +134,14 @@ CREATE TABLE IF NOT EXISTS bank_dev.silver.regulatory_return (
   status STRING, submitted_date DATE, fx_rate DOUBLE, value_base DOUBLE,
   CONSTRAINT pk_regulatory_return PRIMARY KEY (return_id))
   COMMENT 'contract regulatory_return.contract.yaml';
+
+CREATE TABLE IF NOT EXISTS bank_dev.silver.deposits (
+  deposit_id STRING NOT NULL, account_id STRING, customer_id STRING, deposit_type STRING,
+  principal DOUBLE, ccy STRING, interest_rate DOUBLE, term_months INT,
+  opened_date DATE, maturity_date DATE, accrued_interest DOUBLE, status STRING,
+  branch STRING, fx_rate DOUBLE, principal_base DOUBLE, accrued_interest_base DOUBLE,
+  CONSTRAINT pk_deposits PRIMARY KEY (deposit_id))
+  COMMENT 'contract deposits.contract.yaml';
 
 -- Gold (domain marts)
 CREATE TABLE IF NOT EXISTS bank_dev.gold.customer_360 (
@@ -207,5 +221,14 @@ CREATE TABLE IF NOT EXISTS bank_dev.gold.regulatory_by_metric (
   report_code STRING, metric_name STRING, submissions BIGINT, value_base DECIMAL(18,2),
   avg_value DECIMAL(18,2))
   CLUSTER BY (report_code);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.deposit_portfolio (
+  deposit_type STRING, status STRING, deposits BIGINT, principal_base DECIMAL(18,2),
+  accrued_interest_base DECIMAL(18,2), avg_rate DOUBLE)
+  CLUSTER BY (deposit_type);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.deposit_maturity_ladder (
+  maturity_month STRING, deposits BIGINT, principal_base DECIMAL(18,2))
+  CLUSTER BY (maturity_month);
 
 SELECT 'landing + tables ready' AS status;

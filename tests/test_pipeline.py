@@ -25,6 +25,7 @@ def test_medallion_end_to_end(tmp_path, spark):
     assert result["bronze"]["risk_exposure"] > 0
     assert result["bronze"]["aml_alerts"] > 0
     assert result["bronze"]["regulatory_return"] > 0
+    assert result["bronze"]["deposits"] > 0
     assert result["silver"]["customer"]["good_rows"] > 0
     assert result["silver"]["payments"]["good_rows"] > 0
     assert result["silver"]["loans"]["good_rows"] > 0
@@ -32,6 +33,7 @@ def test_medallion_end_to_end(tmp_path, spark):
     assert result["silver"]["risk_exposure"]["good_rows"] > 0
     assert result["silver"]["aml_alerts"]["good_rows"] > 0
     assert result["silver"]["regulatory_return"]["good_rows"] > 0
+    assert result["silver"]["deposits"]["good_rows"] > 0
     assert result["gold"]["customer_360"] > 0
     assert result["gold"]["payments_flow"] > 0
     assert result["gold"]["loan_portfolio"] > 0
@@ -39,6 +41,8 @@ def test_medallion_end_to_end(tmp_path, spark):
     assert result["gold"]["risk_exposure_by_rating"] > 0
     assert result["gold"]["aml_alerts_by_rule"] > 0
     assert result["gold"]["regulatory_by_report"] > 0
+    assert result["gold"]["deposit_portfolio"] > 0
+    assert result["gold"]["deposit_maturity_ladder"] > 0
     assert all(r["status"] == "PASSED" for r in result["recon"]), result["recon"]
     # quarantine works: some bad rows were rejected
     assert result["silver"]["customer"]["rejected_rows"] > 0
@@ -48,3 +52,4 @@ def test_medallion_end_to_end(tmp_path, spark):
     assert result["silver"]["risk_exposure"]["rejected_rows"] > 0
     assert result["silver"]["aml_alerts"]["rejected_rows"] > 0
     assert result["silver"]["regulatory_return"]["rejected_rows"] > 0
+    assert result["silver"]["deposits"]["rejected_rows"] > 0

@@ -64,6 +64,11 @@ extends to the full bank.
 `ccy`, `version`, `submitted_by`, `status`, `submitted_date`, `fx_rate`,
 `value_base`.
 
+### `silver.deposits` (contract: `deposits.contract.yaml`)
+`deposit_id (PK)`, `account_id`, `customer_id`, `deposit_type`, `principal`, `ccy`,
+`interest_rate`, `term_months`, `opened_date`, `maturity_date`, `accrued_interest`,
+`status`, `branch`, `fx_rate`, `principal_base`, `accrued_interest_base`.
+
 ### `gold.customer_360`
 `customer_id`, `segment`, `country`, `kyc_status`, `total_spend`, `txn_count`,
 `last_txn_ts`, `total_balance`.
@@ -116,6 +121,12 @@ extends to the full bank.
 
 ### `gold.regulatory_by_metric`
 `report_code`, `metric_name`, `submissions`, `value_base`, `avg_value`.
+
+### `gold.deposit_portfolio`
+`deposit_type`, `status`, `deposits`, `principal_base`, `accrued_interest_base`, `avg_rate`.
+
+### `gold.deposit_maturity_ladder`
+`maturity_month`, `deposits`, `principal_base`. (Active term deposits bucketed by maturity month.)
 
 ## Relationships
 ```

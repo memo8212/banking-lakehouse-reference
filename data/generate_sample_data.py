@@ -274,6 +274,37 @@ def gen_regulatory(path: Path, n: int = 5000, seed: int = 19) -> None:
                         0.0, "CAD", 1, "analyst01", "DRAFT", "2025-01-02"])
 
 
+DEPOSIT_TYPES = ["TERM", "SAVINGS", "NOTICE", "CALL"]
+DEPOSIT_STATUS = ["ACTIVE", "ACTIVE", "ACTIVE", "MATURED", "WITHDRAWN", "ROLLED"]
+
+
+def gen_deposits(path: Path, n_customers: int = 2000, n: int = 9000, seed: int = 20) -> None:
+    rng = random.Random(seed)
+    start = date(2019, 1, 1)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["deposit_id", "account_id", "customer_id", "deposit_type",
+                    "principal", "ccy", "interest_rate", "term_months", "opened_date",
+                    "maturity_date", "accrued_interest", "status", "branch"])
+        for i in range(1, n + 1):
+            cid = rng.randint(1, n_customers)
+            opened = start + timedelta(days=rng.randrange(2000))
+            term = rng.choice([6, 12, 24, 36, 60])
+            principal = round(rng.uniform(1000, 500000), 2)
+            w.writerow([
+                f"DEP{i:08d}", f"AC{rng.randint(1, 12000):08d}", f"C{cid:07d}",
+                rng.choice(DEPOSIT_TYPES), principal, rng.choice(CCYS),
+                round(rng.uniform(0.005, 0.055), 4), term, opened.isoformat(),
+                (opened + timedelta(days=term * 30)).isoformat(),
+                round(principal * rng.uniform(0.0, 0.05), 2),
+                "BOGUS" if i % 900 == 0 else rng.choice(DEPOSIT_STATUS),
+                rng.choice(BRANCHES),
+            ])
+        for j in range(10):
+            w.writerow([f"DEPBAD{j:05d}", f"AC9{j:07d}", "", "TERM", 1000.0, "CAD",
+                        0.02, 12, "2020-01-01", "2021-01-01", 0.0, "ACTIVE", "BR-001"])
+
+
 if __name__ == "__main__":
     gen_customers(DATA / "customer.csv")
     gen_cards(DATA / "cards_txn.csv")
@@ -284,6 +315,7 @@ if __name__ == "__main__":
     gen_aml_rules(DATA / "aml_rules.csv")
     gen_aml_alerts(DATA / "aml_alerts.csv")
     gen_regulatory(DATA / "regulatory_return.csv")
+    gen_deposits(DATA / "deposits.csv")
     gen_fx(DATA / "fx_rates.csv")
     print("wrote", DATA / "customer.csv")
     print("wrote", DATA / "cards_txn.csv")
@@ -294,4 +326,5 @@ if __name__ == "__main__":
     print("wrote", DATA / "aml_rules.csv")
     print("wrote", DATA / "aml_alerts.csv")
     print("wrote", DATA / "regulatory_return.csv")
+    print("wrote", DATA / "deposits.csv")
     print("wrote", DATA / "fx_rates.csv")

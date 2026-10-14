@@ -18,6 +18,8 @@ groups:
     - "SELECT ON TABLE bank_dev.gold.aml_alert_summary"
     - "SELECT ON TABLE bank_dev.gold.regulatory_by_report"
     - "SELECT ON TABLE bank_dev.gold.regulatory_submission_status"
+    - "SELECT ON TABLE bank_dev.gold.deposit_portfolio"
+    - "SELECT ON TABLE bank_dev.gold.deposit_maturity_ladder"
   dataops:
     - "USAGE ON CATALOG bank_dev"
     - "USE SCHEMA bank_dev.bronze"
@@ -42,6 +44,8 @@ tags:
   bank_dev.gold.regulatory_by_report: { domain: regulatory, layer: gold }
   bank_dev.gold.regulatory_submission_status: { domain: regulatory, layer: gold }
   bank_dev.gold.regulatory_by_metric: { domain: regulatory, layer: gold }
+  bank_dev.gold.deposit_portfolio: { domain: deposits, layer: gold }
+  bank_dev.gold.deposit_maturity_ladder: { domain: deposits, layer: gold }
 
 retention:
   bank_dev.bronze.customer: "interval 2555 days"

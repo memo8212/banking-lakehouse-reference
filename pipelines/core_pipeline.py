@@ -100,6 +100,15 @@ def bronze_regulatory_return():
             .withColumn("_ingested_at", F.current_timestamp())
             .withColumn("_source_file", F.lit("regulatory_return.csv")))
 
+@dp.table(name="bronze_deposits", comment="raw deposit feed")
+def bronze_deposits():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/deposits")
+            .load(f"{LANDING}/deposits")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("deposits.csv")))
+
 # COMMAND ----------
 
 # MAGIC %md ## Silver — conformed + masked + quality expectations
@@ -183,6 +192,17 @@ def silver_regulatory_return():
     return (dp.read_stream("bronze_regulatory_return")
             .withColumn("value", F.col("value").cast("double"))
             .withColumn("report_code", F.upper(F.trim("report_code")))
+            .withColumn("status", F.upper(F.trim("status"))))
+
+@dp.table(name="silver_deposits", comment="conformed deposits")
+@dp.expect_or_drop("valid_status", "status IN ('ACTIVE','MATURED','WITHDRAWN','ROLLED')")
+def silver_deposits():
+    return (dp.read_stream("bronze_deposits")
+            .withColumn("principal", F.col("principal").cast("double"))
+            .withColumn("accrued_interest", F.col("accrued_interest").cast("double"))
+            .withColumn("interest_rate", F.col("interest_rate").cast("double"))
+            .withColumn("term_months", F.col("term_months").cast("int"))
+            .withColumn("deposit_type", F.upper(F.trim("deposit_type")))
             .withColumn("status", F.upper(F.trim("status"))))
 
 # COMMAND ----------
@@ -302,3 +322,45 @@ def gold_aml_high_risk_customers():
                  F.countDistinct("rule_id").alias("rules"),
                  F.round(F.sum("amount"), 2).alias("amount_base"),
                  F.round(F.max("score"), 3).alias("max_score")))
+
+@dp.materialized_view(name="gold_regulatory_by_report", comment="returns by report/entity")
+def gold_regulatory_by_report():
+    reg = dp.read("silver_regulatory_return")
+    return (reg.groupBy("report_code", "entity")
+            .agg(F.count("return_id").alias("returns"),
+                 F.round(F.sum("value_base"), 2).alias("value_base"),
+                 F.sum(F.when(F.col("status") == "ACCEPTED", 1).otherwise(0)).alias("accepted"),
+                 F.round(F.sum(F.when(F.col("status") == "ACCEPTED", 1).otherwise(0))
+                         / F.count("return_id"), 4).alias("acceptance_rate")))
+
+@dp.materialized_view(name="gold_regulatory_submission_status", comment="submissions by status")
+def gold_regulatory_submission_status():
+    reg = dp.read("silver_regulatory_return")
+    return (reg.groupBy("status")
+            .agg(F.count("return_id").alias("submissions"),
+                 F.round(F.sum("value_base"), 2).alias("value_base")))
+
+@dp.materialized_view(name="gold_regulatory_by_metric", comment="returns by report/metric")
+def gold_regulatory_by_metric():
+    reg = dp.read("silver_regulatory_return")
+    return (reg.groupBy("report_code", "metric_name")
+            .agg(F.count("return_id").alias("submissions"),
+                 F.round(F.sum("value_base"), 2).alias("value_base"),
+                 F.round(F.avg("value_base"), 2).alias("avg_value")))
+
+@dp.materialized_view(name="gold_deposit_portfolio", comment="deposit portfolio by type/status")
+def gold_deposit_portfolio():
+    dep = dp.read("silver_deposits")
+    return (dep.groupBy("deposit_type", "status")
+            .agg(F.count("deposit_id").alias("deposits"),
+                 F.round(F.sum("principal_base"), 2).alias("principal_base"),
+                 F.round(F.sum("accrued_interest_base"), 2).alias("accrued_interest_base"),
+                 F.round(F.avg("interest_rate"), 4).alias("avg_rate")))
+
+@dp.materialized_view(name="gold_deposit_maturity_ladder", comment="active deposits by maturity month")
+def gold_deposit_maturity_ladder():
+    dep = dp.read("silver_deposits").filter(F.col("status") == "ACTIVE").withColumn(
+        "maturity_month", F.date_format("maturity_date", "yyyy-MM"))
+    return (dep.groupBy("maturity_month")
+            .agg(F.count("deposit_id").alias("deposits"),
+                 F.round(F.sum("principal_base"), 2).alias("principal_base")))

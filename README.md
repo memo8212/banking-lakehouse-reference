@@ -31,17 +31,19 @@ Example output:
 ```
 Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20), 'payments': (14985, 25),
          'loans': (7990, 20), 'accounts': (11987, 23), 'risk_exposure': (9989, 21),
-         'aml_rules': (10, 0), 'aml_alerts': (5992, 18), 'regulatory_return': (5004, 6)}
+         'aml_rules': (10, 0), 'aml_alerts': (5992, 18), 'regulatory_return': (5004, 6),
+         'deposits': (8990, 20)}
 Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5, 'payments_flow': 10,
-         'payments_by_segment': 25, 'loan_portfolio': 20, 'loan_risk_by_segment': 5,
+         'payments_by_segment': 25, 'loan_portfolio': 16, 'loan_risk_by_segment': 5,
          'account_balances': 16, 'deposits_by_segment': 20, 'risk_exposure_by_rating': 8,
          'risk_limit_utilisation': 5, 'aml_alerts_by_rule': 10, 'aml_alert_summary': 5,
          'aml_high_risk_customers': 1917, 'regulatory_by_report': 24,
-         'regulatory_submission_status': 4, 'regulatory_by_metric': 36}
-Reconcile: 17/17 passed
+         'regulatory_submission_status': 4, 'regulatory_by_metric': 36,
+         'deposit_portfolio': 16, 'deposit_maturity_ladder': 120}
+Reconcile: 19/19 passed
 ```
 
-Domains shipped end-to-end: **customer, cards, payments, loans, accounts, risk, aml, regulatory**.
+Domains shipped end-to-end: **customer, cards, payments, loans, accounts, risk, aml, regulatory, deposits**.
 
 ## What's inside
 
@@ -139,8 +141,8 @@ Full detail in `docs/`.
 
 ## Roadmap
 See the design docs and the family `migration-demos` index. Domains done:
-**customer, cards, payments, loans, accounts, risk, aml, regulatory**. Next:
-**deposits, wealth**. Governance-as-code, Delta Sharing, semantic layer/Genie,
+**customer, cards, payments, loans, accounts, risk, aml, regulatory, deposits**. Next:
+**wealth**. Governance-as-code, Delta Sharing, semantic layer/Genie,
 monitoring and CI/CD are implemented (`governance/`, `semantic/`, `monitoring/`).
 
 ## License

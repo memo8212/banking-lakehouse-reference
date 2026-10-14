@@ -24,7 +24,8 @@ metrics:
     question: "What is card spend by segment?"
 ```
 
-13 metrics ship across customer, cards, payments, loans, accounts, risk and AML.
+18 metrics ship across customer, cards, payments, loans, accounts, risk, AML,
+regulatory and deposits.
 
 ## Commands
 

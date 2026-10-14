@@ -190,6 +190,27 @@ def build(spark, env: Env) -> dict:
     by_metric.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "regulatory_by_metric"))
 
+    # ---- deposits marts ----
+    dep = spark.read.format("delta").load(env.table("silver", "deposits"))
+
+    portfolio = (dep.groupBy("deposit_type", "status")
+                 .agg(F.count("deposit_id").alias("deposits"),
+                      F.round(F.sum("principal_base"), 2).alias("principal_base"),
+                      F.round(F.sum("accrued_interest_base"), 2).alias("accrued_interest_base"),
+                      F.round(F.avg("interest_rate"), 4).alias("avg_rate"))
+                 .orderBy("deposit_type", "status"))
+    portfolio.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "deposit_portfolio"))
+
+    ladder = (dep.filter(F.col("status") == "ACTIVE")
+              .withColumn("maturity_month", F.date_format("maturity_date", "yyyy-MM"))
+              .groupBy("maturity_month")
+              .agg(F.count("deposit_id").alias("deposits"),
+                   F.round(F.sum("principal_base"), 2).alias("principal_base"))
+              .orderBy("maturity_month"))
+    ladder.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "deposit_maturity_ladder"))
+
     return {"customer_360": c360.count(),
             "card_spend_by_segment": seg.count(),
             "payments_flow": flow.count(),
@@ -205,4 +226,6 @@ def build(spark, env: Env) -> dict:
             "aml_high_risk_customers": high_risk.count(),
             "regulatory_by_report": by_report.count(),
             "regulatory_submission_status": by_status_reg.count(),
-            "regulatory_by_metric": by_metric.count()}
+            "regulatory_by_metric": by_metric.count(),
+            "deposit_portfolio": portfolio.count(),
+            "deposit_maturity_ladder": ladder.count()}

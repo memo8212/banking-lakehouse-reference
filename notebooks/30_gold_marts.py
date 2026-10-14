@@ -182,3 +182,25 @@ reg = spark.table(f"{catalog}.silver.regulatory_return")
     .orderBy("report_code", "metric_name")
     .write.mode("overwrite").saveAsTable(f"{catalog}.gold.regulatory_by_metric"))
 display(spark.table(f"{catalog}.gold.regulatory_by_report"))
+
+# COMMAND ----------
+
+# MAGIC %md ## deposit marts (portfolio, maturity ladder)
+dep = spark.table(f"{catalog}.silver.deposits")
+
+(dep.groupBy("deposit_type", "status")
+    .agg(F.count("deposit_id").alias("deposits"),
+         F.round(F.sum("principal_base"), 2).alias("principal_base"),
+         F.round(F.sum("accrued_interest_base"), 2).alias("accrued_interest_base"),
+         F.round(F.avg("interest_rate"), 4).alias("avg_rate"))
+    .orderBy("deposit_type", "status")
+    .write.mode("overwrite").saveAsTable(f"{catalog}.gold.deposit_portfolio"))
+
+(dep.filter(F.col("status") == "ACTIVE")
+    .withColumn("maturity_month", F.date_format("maturity_date", "yyyy-MM"))
+    .groupBy("maturity_month")
+    .agg(F.count("deposit_id").alias("deposits"),
+         F.round(F.sum("principal_base"), 2).alias("principal_base"))
+    .orderBy("maturity_month")
+    .write.mode("overwrite").saveAsTable(f"{catalog}.gold.deposit_maturity_ladder"))
+display(spark.table(f"{catalog}.gold.deposit_portfolio"))

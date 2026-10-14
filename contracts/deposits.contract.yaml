@@ -1,0 +1,24 @@
+name: deposits
+source: deposits
+target_layer: silver
+target_table: deposits
+primary_key: deposit_id
+columns:
+  - { name: deposit_id,       type: string }
+  - { name: account_id,       type: string }
+  - { name: customer_id,      type: string }
+  - { name: deposit_type,     type: string }
+  - { name: principal,        type: decimal }
+  - { name: ccy,              type: string }
+  - { name: interest_rate,    type: double }
+  - { name: term_months,      type: int }
+  - { name: opened_date,      type: date }
+  - { name: maturity_date,    type: date }
+  - { name: accrued_interest, type: decimal }
+  - { name: status,           type: string }
+  - { name: branch,           type: string }
+not_null: [deposit_id, customer_id, principal, status]
+allowed:
+  deposit_type: [TERM, SAVINGS, NOTICE, CALL]
+  status: [ACTIVE, MATURED, WITHDRAWN, ROLLED]
+pii: {}
