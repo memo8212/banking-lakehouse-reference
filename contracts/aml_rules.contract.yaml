@@ -1,0 +1,17 @@
+name: aml_rules
+source: aml_rules
+target_layer: silver
+target_table: aml_rules
+primary_key: rule_id
+columns:
+  - { name: rule_id,    type: string }
+  - { name: rule_name,  type: string }
+  - { name: rule_type,  type: string }
+  - { name: severity,   type: string }
+  - { name: threshold,  type: double }
+  - { name: enabled,    type: string }
+not_null: [rule_id, rule_name, severity]
+allowed:
+  rule_type: [THRESHOLD, VELOCITY, STRUCTURING, SANCTIONS]
+  severity: [LOW, MEDIUM, HIGH, CRITICAL]
+pii: {}

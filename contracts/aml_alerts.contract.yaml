@@ -1,0 +1,22 @@
+name: aml_alerts
+source: aml_alerts
+target_layer: silver
+target_table: aml_alerts
+primary_key: alert_id
+columns:
+  - { name: alert_id,      type: string }
+  - { name: customer_id,   type: string }
+  - { name: rule_id,       type: string }
+  - { name: source_system, type: string }
+  - { name: source_ref,    type: string }
+  - { name: ccy,           type: string }
+  - { name: amount,        type: decimal }
+  - { name: score,         type: double }
+  - { name: alert_date,    type: date }
+  - { name: status,        type: string }
+  - { name: assigned_to,   type: string }
+not_null: [alert_id, customer_id, rule_id, status]
+allowed:
+  source_system: [CARDS, PAYMENTS, LOANS, ACCOUNTS]
+  status: [OPEN, IN_REVIEW, ESCALATED, CLOSED, DISMISSED]
+pii: {}

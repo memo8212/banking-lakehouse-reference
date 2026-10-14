@@ -73,6 +73,24 @@ def bronze_risk_exposure():
             .withColumn("_ingested_at", F.current_timestamp())
             .withColumn("_source_file", F.lit("risk_exposure.csv")))
 
+@dp.table(name="bronze_aml_rules", comment="raw AML rules")
+def bronze_aml_rules():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/aml_rules")
+            .load(f"{LANDING}/aml_rules")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("aml_rules.csv")))
+
+@dp.table(name="bronze_aml_alerts", comment="raw AML alerts")
+def bronze_aml_alerts():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/aml_alerts")
+            .load(f"{LANDING}/aml_alerts")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("aml_alerts.csv")))
+
 # COMMAND ----------
 
 # MAGIC %md ## Silver — conformed + masked + quality expectations
@@ -134,6 +152,21 @@ def silver_risk_exposure():
             .withColumn("lgd", F.col("lgd").cast("double"))
             .withColumn("status", F.upper(F.trim("status")))
             .withColumn("rating", F.upper(F.trim("rating"))))
+
+@dp.table(name="silver_aml_rules", comment="conformed AML rules")
+def silver_aml_rules():
+    return (dp.read_stream("bronze_aml_rules")
+            .withColumn("rule_type", F.upper(F.trim("rule_type")))
+            .withColumn("severity", F.upper(F.trim("severity"))))
+
+@dp.table(name="silver_aml_alerts", comment="conformed AML alerts")
+@dp.expect_or_drop("valid_status",
+                   "status IN ('OPEN','IN_REVIEW','ESCALATED','CLOSED','DISMISSED')")
+def silver_aml_alerts():
+    return (dp.read_stream("bronze_aml_alerts")
+            .withColumn("amount", F.col("amount").cast("double"))
+            .withColumn("score", F.col("score").cast("double"))
+            .withColumn("status", F.upper(F.trim("status"))))
 
 # COMMAND ----------
 
@@ -228,3 +261,27 @@ def gold_risk_by_segment():
             .agg(F.round(F.sum("ead"), 2).alias("ead_base"),
                  F.round(F.sum(el), 2).alias("expected_loss"),
                  F.sum(F.when(F.col("status") == "DEFAULT", 1).otherwise(0)).alias("defaults")))
+
+@dp.materialized_view(name="gold_aml_alerts_by_rule", comment="AML alerts by rule")
+def gold_aml_alerts_by_rule():
+    alerts = dp.read("silver_aml_alerts")
+    return (alerts.groupBy("rule_id")
+            .agg(F.count("alert_id").alias("alerts"),
+                 F.round(F.sum("amount"), 2).alias("amount_base"),
+                 F.round(F.avg("score"), 3).alias("avg_score")))
+
+@dp.materialized_view(name="gold_aml_alert_summary", comment="AML alerts by status")
+def gold_aml_alert_summary():
+    alerts = dp.read("silver_aml_alerts")
+    return (alerts.groupBy("status")
+            .agg(F.count("alert_id").alias("alerts"),
+                 F.round(F.sum("amount"), 2).alias("amount_base")))
+
+@dp.materialized_view(name="gold_aml_high_risk_customers", comment="customers by alert volume")
+def gold_aml_high_risk_customers():
+    alerts = dp.read("silver_aml_alerts")
+    return (alerts.groupBy("customer_id")
+            .agg(F.count("alert_id").alias("alerts"),
+                 F.countDistinct("rule_id").alias("rules"),
+                 F.round(F.sum("amount"), 2).alias("amount_base"),
+                 F.round(F.max("score"), 3).alias("max_score")))

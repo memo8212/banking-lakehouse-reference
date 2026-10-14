@@ -30,15 +30,17 @@ pytest -q tests/
 Example output:
 ```
 Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20), 'payments': (14985, 25),
-         'loans': (7990, 20), 'accounts': (11987, 23), 'risk_exposure': (9990, 20)}
+         'loans': (7990, 20), 'accounts': (11987, 23), 'risk_exposure': (9989, 21),
+         'aml_rules': (10, 0), 'aml_alerts': (5990, 20)}
 Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5, 'payments_flow': 10,
          'payments_by_segment': 25, 'loan_portfolio': 20, 'loan_risk_by_segment': 5,
-         'account_balances': 16, 'deposits_by_segment': 20,
-         'risk_exposure_by_rating': 8, 'risk_limit_utilisation': 5}
-Reconcile: 12/12 passed
+         'account_balances': 16, 'deposits_by_segment': 20, 'risk_exposure_by_rating': 8,
+         'risk_limit_utilisation': 5, 'aml_alerts_by_rule': 10,
+         'aml_alert_summary': 5, 'aml_high_risk_customers': 1000}
+Reconcile: 15/15 passed
 ```
 
-Domains shipped end-to-end: **customer, cards, payments, loans, accounts, risk**.
+Domains shipped end-to-end: **customer, cards, payments, loans, accounts, risk, aml**.
 
 ## What's inside
 
@@ -105,8 +107,9 @@ Full detail in `docs/`.
 
 ## Roadmap
 See the design docs and the family `migration-demos` index. Domains done:
-**customer, cards, payments, loans, accounts, risk**. Next: **deposits, wealth,
-AML**. Governance-as-code and Delta Sharing are implemented in `governance/`.
+**customer, cards, payments, loans, accounts, risk, aml**. Next: **deposits,
+wealth, regulatory**. Governance-as-code and Delta Sharing are implemented in
+`governance/`; monitoring in `monitoring/`.
 
 ## License
 MIT — see `LICENSE`.

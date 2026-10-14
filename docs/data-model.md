@@ -51,6 +51,14 @@ extends to the full bank.
 `pd`, `lgd`, `risk_weight`, `rating`, `limit_amount`, `as_of_date`, `status`,
 `fx_rate`, `ead_base`, `limit_base`.
 
+### `silver.aml_rules` (contract: `aml_rules.contract.yaml`)
+`rule_id (PK)`, `rule_name`, `rule_type`, `severity`, `threshold`, `enabled`.
+
+### `silver.aml_alerts` (contract: `aml_alerts.contract.yaml`)
+`alert_id (PK)`, `customer_id`, `rule_id`, `rule_name`, `severity`, `source_system`,
+`source_ref`, `ccy`, `amount`, `amount_base`, `score`, `alert_date`, `status`,
+`assigned_to`.
+
 ### `gold.customer_360`
 `customer_id`, `segment`, `country`, `kyc_status`, `total_spend`, `txn_count`,
 `last_txn_ts`, `total_balance`.
@@ -85,6 +93,15 @@ extends to the full bank.
 
 ### `gold.risk_by_segment`
 `segment`, `ead_base`, `expected_loss`, `defaults`.
+
+### `gold.aml_alerts_by_rule`
+`rule_id`, `rule_name`, `severity`, `alerts`, `amount_base`, `avg_score`.
+
+### `gold.aml_alert_summary`
+`status`, `alerts`, `amount_base`, `avg_score`.
+
+### `gold.aml_high_risk_customers`
+`customer_id`, `alerts`, `rules`, `amount_base`, `max_score`.
 
 ## Relationships
 ```

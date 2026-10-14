@@ -152,6 +152,34 @@ goodr = risk.filter(F.col("exposure_id").isNotNull() & F.col("customer_id").isNo
                     & F.col("status").isin("ACTIVE", "MATURED", "DEFAULT"))
 goodr.write.mode("overwrite").saveAsTable(f"{catalog}.silver.risk_exposure")
 risk.subtract(goodr).write.mode("overwrite").saveAsTable(f"{catalog}.silver.risk_exposure_rejected")
+
+# COMMAND ----------
+
+# MAGIC %md ## AML: rules + alerts (join severity, FX, quality gate)
+rules = (spark.table(f"{catalog}.bronze.aml_rules")
+         .withColumn("threshold", F.col("threshold").cast("double"))
+         .withColumn("rule_type", F.upper(F.trim("rule_type")))
+         .withColumn("severity", F.upper(F.trim("severity")))
+         .drop("_ingested_at", "_source_file"))
+rules.write.mode("overwrite").saveAsTable(f"{catalog}.silver.aml_rules")
+
+alerts = (spark.table(f"{catalog}.bronze.aml_alerts")
+          .withColumn("amount", F.col("amount").cast("double"))
+          .withColumn("score", F.col("score").cast("double"))
+          .withColumn("alert_date", F.to_date("alert_date"))
+          .withColumn("source_system", F.upper(F.trim("source_system")))
+          .withColumn("status", F.upper(F.trim("status")))
+          .drop("_ingested_at", "_source_file")
+          .join(rules.select("rule_id", "rule_name", "severity"), "rule_id", "left")
+          .join(fx.select("ccy", "fx_rate"), "ccy", "left")
+          .withColumn("amount_base", F.round(F.col("amount") * F.col("fx_rate"), 2)))
+wam = Window.partitionBy("alert_id").orderBy(F.monotonic_increasing_id())
+alerts = alerts.withColumn("__rn", F.row_number().over(wam)).filter("__rn = 1").drop("__rn")
+goodam = alerts.filter(F.col("alert_id").isNotNull() & F.col("customer_id").isNotNull()
+                       & F.col("rule_id").isNotNull()
+                       & F.col("status").isin("OPEN", "IN_REVIEW", "ESCALATED", "CLOSED", "DISMISSED"))
+goodam.write.mode("overwrite").saveAsTable(f"{catalog}.silver.aml_alerts")
+alerts.subtract(goodam).write.mode("overwrite").saveAsTable(f"{catalog}.silver.aml_alerts_rejected")
 print("silver:", good.count(), "customers,", goodc.count(), "txns,",
       goodp.count(), "payments,", goodl.count(), "loans,",
-      gooda.count(), "accounts,", goodr.count(), "exposures")
+      gooda.count(), "accounts,", goodr.count(), "exposures,", goodam.count(), "alerts")

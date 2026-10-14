@@ -159,4 +159,30 @@ def conform(spark, env: Env, contracts: dict) -> dict:
                .withColumn("limit_base", F.round(F.col("limit_amount") * F.col("fx_rate"), 2))
     risk = _dedupe(risk, rx.primary_key)
     _split_and_write(spark, env, risk, rx, report)
+
+    # ---- aml_rules ----
+    ar = contracts["aml_rules"]
+    rules = (spark.read.format("delta").load(env.table("bronze", "aml_rules"))
+             .withColumn("threshold", F.col("threshold").cast("double"))
+             .withColumn("rule_type", F.upper(F.trim("rule_type")))
+             .withColumn("severity", F.upper(F.trim("severity")))
+             .withColumn("enabled", F.upper(F.trim("enabled"))))
+    rules = _dedupe(rules, ar.primary_key)
+    _split_and_write(spark, env, rules, ar, report)
+
+    # ---- aml_alerts ----
+    aa = contracts["aml_alerts"]
+    alerts = (spark.read.format("delta").load(env.table("bronze", "aml_alerts"))
+              .withColumn("amount", F.col("amount").cast("double"))
+              .withColumn("score", F.col("score").cast("double"))
+              .withColumn("alert_date", F.to_date("alert_date"))
+              .withColumn("source_system", F.upper(F.trim("source_system")))
+              .withColumn("status", F.upper(F.trim("status")))
+              .withColumn("ccy", F.upper(F.trim("ccy"))))
+    alerts = (alerts
+              .join(rules.select("rule_id", "rule_name", "severity"), "rule_id", "left")
+              .join(fx.select("ccy", "fx_rate"), "ccy", "left")
+              .withColumn("amount_base", F.round(F.col("amount") * F.col("fx_rate"), 2)))
+    alerts = _dedupe(alerts, aa.primary_key)
+    _split_and_write(spark, env, alerts, aa, report)
     return report

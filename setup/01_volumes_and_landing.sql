@@ -43,6 +43,15 @@ CREATE TABLE IF NOT EXISTS bank_dev.bronze.risk_exposure (
   limit_amount STRING, as_of_date STRING, status STRING,
   _ingested_at TIMESTAMP, _source_file STRING);
 
+CREATE TABLE IF NOT EXISTS bank_dev.bronze.aml_rules (
+  rule_id STRING, rule_name STRING, rule_type STRING, severity STRING,
+  threshold STRING, enabled STRING, _ingested_at TIMESTAMP, _source_file STRING);
+
+CREATE TABLE IF NOT EXISTS bank_dev.bronze.aml_alerts (
+  alert_id STRING, customer_id STRING, rule_id STRING, source_system STRING,
+  source_ref STRING, ccy STRING, amount STRING, score STRING, alert_date STRING,
+  status STRING, assigned_to STRING, _ingested_at TIMESTAMP, _source_file STRING);
+
 -- File registry (file-level lineage)
 CREATE TABLE IF NOT EXISTS bank_dev.bronze.file_registry (
   file_name STRING, path STRING, size BIGINT, md5 STRING, lines BIGINT);
@@ -94,6 +103,20 @@ CREATE TABLE IF NOT EXISTS bank_dev.silver.risk_exposure (
   CONSTRAINT pk_risk_exposure PRIMARY KEY (exposure_id))
   COMMENT 'contract risk_exposure.contract.yaml';
 
+CREATE TABLE IF NOT EXISTS bank_dev.silver.aml_rules (
+  rule_id STRING NOT NULL, rule_name STRING, rule_type STRING, severity STRING,
+  threshold DOUBLE, enabled STRING,
+  CONSTRAINT pk_aml_rules PRIMARY KEY (rule_id))
+  COMMENT 'contract aml_rules.contract.yaml';
+
+CREATE TABLE IF NOT EXISTS bank_dev.silver.aml_alerts (
+  alert_id STRING NOT NULL, customer_id STRING, rule_id STRING, rule_name STRING,
+  severity STRING, source_system STRING, source_ref STRING, ccy STRING,
+  amount DOUBLE, amount_base DOUBLE, score DOUBLE, alert_date DATE, status STRING,
+  assigned_to STRING,
+  CONSTRAINT pk_aml_alerts PRIMARY KEY (alert_id))
+  COMMENT 'contract aml_alerts.contract.yaml';
+
 -- Gold (domain marts)
 CREATE TABLE IF NOT EXISTS bank_dev.gold.customer_360 (
   customer_id STRING, segment STRING, country STRING, kyc_status STRING,
@@ -144,5 +167,19 @@ CREATE TABLE IF NOT EXISTS bank_dev.gold.risk_limit_utilisation (
 CREATE TABLE IF NOT EXISTS bank_dev.gold.risk_by_segment (
   segment STRING, ead_base DECIMAL(18,2), expected_loss DECIMAL(18,2), defaults BIGINT)
   CLUSTER BY (segment);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.aml_alerts_by_rule (
+  rule_id STRING, rule_name STRING, severity STRING, alerts BIGINT,
+  amount_base DECIMAL(18,2), avg_score DOUBLE)
+  CLUSTER BY (rule_id);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.aml_alert_summary (
+  status STRING, alerts BIGINT, amount_base DECIMAL(18,2), avg_score DOUBLE)
+  CLUSTER BY (status);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.aml_high_risk_customers (
+  customer_id STRING, alerts BIGINT, rules BIGINT, amount_base DECIMAL(18,2),
+  max_score DOUBLE)
+  CLUSTER BY (customer_id);
 
 SELECT 'landing + tables ready' AS status;

@@ -24,8 +24,22 @@ def main() -> int:
 
     w = WorkspaceClient()
     assets = args.assets_dir or f"/Volumes/{args.catalog}/landing/_monitoring"
-    tables = [f"{args.catalog}.gold.customer_360",
-              f"{args.catalog}.gold.card_spend_by_segment"]
+    tables = [
+        f"{args.catalog}.gold.customer_360",
+        f"{args.catalog}.gold.card_spend_by_segment",
+        f"{args.catalog}.gold.payments_flow",
+        f"{args.catalog}.gold.payments_by_segment",
+        f"{args.catalog}.gold.loan_portfolio",
+        f"{args.catalog}.gold.loan_risk_by_segment",
+        f"{args.catalog}.gold.account_balances",
+        f"{args.catalog}.gold.deposits_by_segment",
+        f"{args.catalog}.gold.risk_exposure_by_rating",
+        f"{args.catalog}.gold.risk_limit_utilisation",
+        f"{args.catalog}.gold.risk_by_segment",
+        f"{args.catalog}.gold.aml_alerts_by_rule",
+        f"{args.catalog}.gold.aml_alert_summary",
+        f"{args.catalog}.gold.aml_high_risk_customers",
+    ]
 
     for table in tables:
         try:

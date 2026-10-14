@@ -127,4 +127,31 @@ el = F.round(F.col("pd") * F.col("lgd") * F.col("ead_base"), 2)
           F.sum(F.when(F.col("status") == "DEFAULT", 1).otherwise(0)).alias("defaults"))
      .orderBy("segment")
      .write.mode("overwrite").saveAsTable(f"{catalog}.gold.risk_by_segment"))
-display(spark.table(f"{catalog}.gold.risk_exposure_by_rating"))
+
+# COMMAND ----------
+
+# MAGIC %md ## AML marts (by rule, by status, high-risk customers)
+alerts = spark.table(f"{catalog}.silver.aml_alerts")
+
+(alerts.groupBy("rule_id", "rule_name", "severity")
+       .agg(F.count("alert_id").alias("alerts"),
+            F.round(F.sum("amount_base"), 2).alias("amount_base"),
+            F.round(F.avg("score"), 3).alias("avg_score"))
+       .orderBy("rule_id")
+       .write.mode("overwrite").saveAsTable(f"{catalog}.gold.aml_alerts_by_rule"))
+
+(alerts.groupBy("status")
+       .agg(F.count("alert_id").alias("alerts"),
+            F.round(F.sum("amount_base"), 2).alias("amount_base"),
+            F.round(F.avg("score"), 3).alias("avg_score"))
+       .orderBy("status")
+       .write.mode("overwrite").saveAsTable(f"{catalog}.gold.aml_alert_summary"))
+
+(alerts.groupBy("customer_id")
+       .agg(F.count("alert_id").alias("alerts"),
+            F.countDistinct("rule_id").alias("rules"),
+            F.round(F.sum("amount_base"), 2).alias("amount_base"),
+            F.round(F.max("score"), 3).alias("max_score"))
+       .orderBy(F.col("alerts").desc(), F.col("max_score").desc())
+       .write.mode("overwrite").saveAsTable(f"{catalog}.gold.aml_high_risk_customers"))
+display(spark.table(f"{catalog}.gold.aml_alert_summary"))

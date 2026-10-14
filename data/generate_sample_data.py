@@ -203,6 +203,47 @@ def gen_payments(path: Path, n_customers: int = 2000, n: int = 15000, seed: int 
                         "2026-01-15", "2026-01-15 10:00:00"])
 
 
+AML_RULE_TYPES = ["THRESHOLD", "VELOCITY", "STRUCTURING", "SANCTIONS"]
+AML_SEVERITY = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+AML_SOURCES = ["CARDS", "PAYMENTS", "LOANS", "ACCOUNTS"]
+AML_STATUS = ["OPEN", "IN_REVIEW", "ESCALATED", "CLOSED", "DISMISSED"]
+ANALYSTS = ["analyst01", "analyst02", "analyst03", "analyst04"]
+
+
+def gen_aml_rules(path: Path, n: int = 10, seed: int = 17) -> None:
+    rng = random.Random(seed)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["rule_id", "rule_name", "rule_type", "severity", "threshold", "enabled"])
+        for i in range(1, n + 1):
+            rtype = rng.choice(AML_RULE_TYPES)
+            w.writerow([f"R{i:03d}", f"{rtype.title()} rule {i}", rtype,
+                        rng.choice(AML_SEVERITY), round(rng.uniform(1000, 100000), 2), "Y"])
+
+
+def gen_aml_alerts(path: Path, n_customers: int = 2000, n_rules: int = 10,
+                   n: int = 6000, seed: int = 18) -> None:
+    rng = random.Random(seed)
+    start = date(2026, 1, 1)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["alert_id", "customer_id", "rule_id", "source_system", "source_ref",
+                    "ccy", "amount", "score", "alert_date", "status", "assigned_to"])
+        for i in range(1, n + 1):
+            w.writerow([
+                f"AL{i:08d}", f"C{rng.randint(1, n_customers):07d}",
+                f"R{rng.randint(1, n_rules):03d}", rng.choice(AML_SOURCES),
+                f"REF{rng.randint(1, 999999):06d}", rng.choice(CCYS),
+                round(rng.uniform(100, 500000), 2), round(rng.uniform(0.1, 1.0), 3),
+                (start + timedelta(days=rng.randrange(31))).isoformat(),
+                "BOGUS" if i % 700 == 0 else rng.choice(AML_STATUS),
+                rng.choice(ANALYSTS),
+            ])
+        for j in range(10):
+            w.writerow([f"ALBAD{j:05d}", "", "R001", "CARDS", "REF0", "CAD", 100.0,
+                        0.5, "2026-01-01", "OPEN", "analyst01"])
+
+
 if __name__ == "__main__":
     gen_customers(DATA / "customer.csv")
     gen_cards(DATA / "cards_txn.csv")
@@ -210,6 +251,8 @@ if __name__ == "__main__":
     gen_loans(DATA / "loans.csv")
     gen_accounts(DATA / "accounts.csv")
     gen_risk(DATA / "risk_exposure.csv")
+    gen_aml_rules(DATA / "aml_rules.csv")
+    gen_aml_alerts(DATA / "aml_alerts.csv")
     gen_fx(DATA / "fx_rates.csv")
     print("wrote", DATA / "customer.csv")
     print("wrote", DATA / "cards_txn.csv")
@@ -217,4 +260,6 @@ if __name__ == "__main__":
     print("wrote", DATA / "loans.csv")
     print("wrote", DATA / "accounts.csv")
     print("wrote", DATA / "risk_exposure.csv")
+    print("wrote", DATA / "aml_rules.csv")
+    print("wrote", DATA / "aml_alerts.csv")
     print("wrote", DATA / "fx_rates.csv")

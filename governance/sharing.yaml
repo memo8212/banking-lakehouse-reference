@@ -8,3 +8,4 @@ tables:
   - bank_dev.gold.payments_flow
   - bank_dev.gold.account_balances
   - bank_dev.gold.risk_exposure_by_rating
+  - bank_dev.gold.aml_alert_summary

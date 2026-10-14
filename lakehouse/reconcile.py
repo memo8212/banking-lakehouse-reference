@@ -9,7 +9,8 @@ from lakehouse.config import Env
 def reconcile(spark, env: Env) -> list[dict]:
     results: list[dict] = []
 
-    for name in ("customer", "cards_txn", "payments", "loans", "accounts", "risk_exposure"):
+    for name in ("customer", "cards_txn", "payments", "loans", "accounts",
+                 "risk_exposure", "aml_rules", "aml_alerts"):
         src = spark.read.option("header", True).csv(f"{env.source_dir}/{name}.csv").count()
         brz = spark.read.format("delta").load(env.table("bronze", name)).count()
         results.append({"check": f"{name}: source vs bronze row-count",
@@ -66,6 +67,16 @@ def reconcile(spark, env: Env) -> list[dict]:
     results.append({"check": "gold risk_exposure_by_rating vs silver ead_base",
                     "status": "PASSED" if rok else "FAILED",
                     "expected": round(float(rs), 2), "actual": round(float(rg), 2)})
+
+    # AML: gold aml_alerts_by_rule amount vs silver alerts
+    aml_silver = spark.read.format("delta").load(env.table("silver", "aml_alerts"))
+    aml_gold = spark.read.format("delta").load(env.table("gold", "aml_alerts_by_rule"))
+    ams = aml_silver.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
+    amg = aml_gold.agg(F.coalesce(F.sum("amount_base"), F.lit(0.0))).first()[0]
+    amok = abs(float(ams) - float(amg)) < 0.01
+    results.append({"check": "gold aml_alerts_by_rule vs silver amount_base",
+                    "status": "PASSED" if amok else "FAILED",
+                    "expected": round(float(ams), 2), "actual": round(float(amg), 2)})
 
     results.append({"check": "silver customer rejects (<=5% tolerance)",
                     "status": "PASSED", "expected": "n/a",
