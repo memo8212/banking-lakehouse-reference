@@ -1,0 +1,39 @@
+name: cd
+
+# Deploy on merge to main (dev), then promote to uat/prod manually.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Bundle target to deploy"
+        type: choice
+        options: [uat, prod]
+        default: uat
+
+jobs:
+  deploy_dev:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Deploy to dev
+        run: databricks bundle deploy -t dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+  promote:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target }}   # gate with required reviewers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Deploy to ${{ github.event.inputs.target }}
+        run: databricks bundle deploy -t ${{ github.event.inputs.target }}
+        env:
+          DATABRICKS_HOST: ${{ secrets[format('DATABRICKS_HOST_{0}', github.event.inputs.target == 'prod' && 'PROD' || 'UAT')] }}
+          DATABRICKS_TOKEN: ${{ secrets[format('DATABRICKS_TOKEN_{0}', github.event.inputs.target == 'prod' && 'PROD' || 'UAT')] }}

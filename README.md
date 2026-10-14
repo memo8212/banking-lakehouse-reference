@@ -30,14 +30,15 @@ pytest -q tests/
 Example output:
 ```
 Silver: {'customer': (2000, 30), 'cards_txn': (19980, 20), 'payments': (14985, 25),
-         'loans': (7990, 20), 'accounts': (11990, 20)}
+         'loans': (7990, 20), 'accounts': (11987, 23), 'risk_exposure': (9990, 20)}
 Gold:   {'customer_360': 2000, 'card_spend_by_segment': 5, 'payments_flow': 10,
          'payments_by_segment': 25, 'loan_portfolio': 20, 'loan_risk_by_segment': 5,
-         'account_balances': 15, 'deposits_by_segment': 20}
-Reconcile: 10/10 passed
+         'account_balances': 16, 'deposits_by_segment': 20,
+         'risk_exposure_by_rating': 8, 'risk_limit_utilisation': 5}
+Reconcile: 12/12 passed
 ```
 
-Domains shipped end-to-end: **customer, cards, payments, loans, accounts**.
+Domains shipped end-to-end: **customer, cards, payments, loans, accounts, risk**.
 
 ## What's inside
 
@@ -58,7 +59,8 @@ resources/        Asset Bundle job + pipeline
 setup/            UC catalogs/schemas/volume + PII masks (SQL)
 monitoring/       Lakehouse Monitoring setup (profile/drift)
 governance/       governance as code: access.yaml + sharing.yaml -> SQL + manifest
-docs/             architecture · naming · data-model · governance · slas-and-dr
+scripts/          promote.sh (dev → uat → prod)
+docs/             architecture · naming · data-model · governance · slas-and-dr · ci-cd
 tests/            contracts + end-to-end medallion + governance
 ```
 
@@ -103,7 +105,7 @@ Full detail in `docs/`.
 
 ## Roadmap
 See the design docs and the family `migration-demos` index. Domains done:
-**customer, cards, payments, loans, accounts**. Next: **deposits, wealth, risk,
+**customer, cards, payments, loans, accounts, risk**. Next: **deposits, wealth,
 AML**. Governance-as-code and Delta Sharing are implemented in `governance/`.
 
 ## License

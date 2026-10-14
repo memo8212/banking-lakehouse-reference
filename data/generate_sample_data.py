@@ -122,6 +122,35 @@ ACCT_TYPES = ["CURRENT", "SAVINGS", "TERM", "LOAN"]
 ACCT_STATUS = ["ACTIVE", "ACTIVE", "ACTIVE", "DORMANT", "CLOSED", "FROZEN"]
 BRANCHES = ["BR-001", "BR-002", "BR-003", "BR-004", "BR-005"]
 
+EXPOSURE_TYPES = ["LOAN", "DEPOSIT", "CARD", "DERIVATIVE", "COMMITMENT"]
+RATINGS = ["AAA", "AA", "A", "A", "BBB", "BB", "B", "CCC", "D"]
+RISK_STATUS = ["ACTIVE", "ACTIVE", "ACTIVE", "MATURED", "DEFAULT"]
+
+
+def gen_risk(path: Path, n_customers: int = 2000, n: int = 10000, seed: int = 16) -> None:
+    rng = random.Random(seed)
+    start = date(2026, 1, 1)
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["exposure_id", "customer_id", "facility_id", "exposure_type", "ccy",
+                    "ead", "pd", "lgd", "risk_weight", "rating", "limit_amount",
+                    "as_of_date", "status"])
+        for i in range(1, n + 1):
+            cid = rng.randint(1, n_customers)
+            ead = round(rng.uniform(1000, 2_000_000), 2)
+            w.writerow([
+                f"EX{i:08d}", f"C{cid:07d}", f"FAC{rng.randint(1, 3000):06d}",
+                rng.choice(EXPOSURE_TYPES), rng.choice(CCYS), ead,
+                round(rng.uniform(0.001, 0.25), 4), round(rng.uniform(0.3, 0.6), 2),
+                round(rng.uniform(0.2, 1.5), 2), rng.choice(RATINGS),
+                round(ead * rng.uniform(1.0, 2.5), 2),
+                (start + timedelta(days=rng.randrange(31))).isoformat(),
+                "BOGUS" if i % 900 == 0 else rng.choice(RISK_STATUS),
+            ])
+        for j in range(10):
+            w.writerow([f"EXBAD{j:05d}", "", f"FAC9{j:06d}", "LOAN", "CAD", 1000.0,
+                        0.02, 0.4, 1.0, "A", 2000.0, "2026-01-01", "ACTIVE"])
+
 
 def gen_accounts(path: Path, n_customers: int = 2000, n: int = 12000, seed: int = 15) -> None:
     rng = random.Random(seed)
@@ -180,10 +209,12 @@ if __name__ == "__main__":
     gen_payments(DATA / "payments.csv")
     gen_loans(DATA / "loans.csv")
     gen_accounts(DATA / "accounts.csv")
+    gen_risk(DATA / "risk_exposure.csv")
     gen_fx(DATA / "fx_rates.csv")
     print("wrote", DATA / "customer.csv")
     print("wrote", DATA / "cards_txn.csv")
     print("wrote", DATA / "payments.csv")
     print("wrote", DATA / "loans.csv")
     print("wrote", DATA / "accounts.csv")
+    print("wrote", DATA / "risk_exposure.csv")
     print("wrote", DATA / "fx_rates.csv")

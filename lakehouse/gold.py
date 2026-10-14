@@ -74,7 +74,7 @@ def build(spark, env: Env) -> dict:
     portfolio.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "loan_portfolio"))
 
-    risk = (loans.join(cust.select("customer_id", "segment"), "customer_id", "left")
+    loan_risk = (loans.join(cust.select("customer_id", "segment"), "customer_id", "left")
             .groupBy("segment")
             .agg(F.count("loan_id").alias("loans"),
                  F.round(F.sum("outstanding_base"), 2).alias("outstanding_base"),
@@ -82,7 +82,7 @@ def build(spark, env: Env) -> dict:
                  F.round(F.sum(F.when(F.col("days_past_due") > 0, 1).otherwise(0))
                          / F.count("loan_id"), 4).alias("delinquency_rate"))
             .orderBy("segment"))
-    risk.write.mode("overwrite").option("overwriteSchema", "true") \
+    loan_risk.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "loan_risk_by_segment"))
 
     # ---- accounts marts ----
@@ -104,11 +104,43 @@ def build(spark, env: Env) -> dict:
     deposits.write.mode("overwrite").option("overwriteSchema", "true") \
         .format("delta").save(env.table("gold", "deposits_by_segment"))
 
+    # ---- risk marts ----
+    risk = spark.read.format("delta").load(env.table("silver", "risk_exposure"))
+    el = F.round(F.col("pd") * F.col("lgd") * F.col("ead_base"), 2)
+
+    by_rating = (risk.groupBy("rating")
+                 .agg(F.count("exposure_id").alias("exposures"),
+                      F.round(F.sum("ead_base"), 2).alias("ead_base"),
+                      F.round(F.sum(el), 2).alias("expected_loss"),
+                      F.round(F.avg("pd"), 4).alias("avg_pd"))
+                 .orderBy("rating"))
+    by_rating.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "risk_exposure_by_rating"))
+
+    limits = (risk.groupBy("exposure_type")
+              .agg(F.round(F.sum("limit_base"), 2).alias("limit_base"),
+                   F.round(F.sum("ead_base"), 2).alias("ead_base"))
+              .withColumn("utilisation", F.round(F.col("ead_base") / F.col("limit_base"), 4))
+              .orderBy("exposure_type"))
+    limits.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "risk_limit_utilisation"))
+
+    risk_seg = (risk.join(cust.select("customer_id", "segment"), "customer_id", "left")
+                .groupBy("segment")
+                .agg(F.round(F.sum("ead_base"), 2).alias("ead_base"),
+                     F.round(F.sum(el), 2).alias("expected_loss"),
+                     F.sum(F.when(F.col("status") == "DEFAULT", 1).otherwise(0)).alias("defaults"))
+                .orderBy("segment"))
+    risk_seg.write.mode("overwrite").option("overwriteSchema", "true") \
+        .format("delta").save(env.table("gold", "risk_by_segment"))
+
     return {"customer_360": c360.count(),
             "card_spend_by_segment": seg.count(),
             "payments_flow": flow.count(),
             "payments_by_segment": by_segment.count(),
             "loan_portfolio": portfolio.count(),
-            "loan_risk_by_segment": risk.count(),
+            "loan_risk_by_segment": loan_risk.count(),
             "account_balances": acct_bal.count(),
-            "deposits_by_segment": deposits.count()}
+            "deposits_by_segment": deposits.count(),
+            "risk_exposure_by_rating": by_rating.count(),
+            "risk_limit_utilisation": limits.count()}

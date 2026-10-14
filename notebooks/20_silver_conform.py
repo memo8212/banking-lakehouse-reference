@@ -127,5 +127,31 @@ gooda = accounts.filter(F.col("account_id").isNotNull() & F.col("customer_id").i
                         & F.col("status").isin("ACTIVE", "DORMANT", "CLOSED", "FROZEN"))
 gooda.write.mode("overwrite").saveAsTable(f"{catalog}.silver.accounts")
 accounts.subtract(gooda).write.mode("overwrite").saveAsTable(f"{catalog}.silver.accounts_rejected")
+
+# COMMAND ----------
+
+# MAGIC %md ## risk_exposure (cast, FX to base, quality gate)
+risk = (spark.table(f"{catalog}.bronze.risk_exposure")
+        .withColumn("ead", F.col("ead").cast("double"))
+        .withColumn("pd", F.col("pd").cast("double"))
+        .withColumn("lgd", F.col("lgd").cast("double"))
+        .withColumn("risk_weight", F.col("risk_weight").cast("double"))
+        .withColumn("limit_amount", F.col("limit_amount").cast("double"))
+        .withColumn("as_of_date", F.to_date("as_of_date"))
+        .withColumn("status", F.upper(F.trim("status")))
+        .withColumn("exposure_type", F.upper(F.trim("exposure_type")))
+        .withColumn("rating", F.upper(F.trim("rating")))
+        .drop("_ingested_at", "_source_file")
+        .join(fx.select("ccy", "fx_rate"), "ccy", "left")
+        .withColumn("ead_base", F.round(F.col("ead") * F.col("fx_rate"), 2))
+        .withColumn("limit_base", F.round(F.col("limit_amount") * F.col("fx_rate"), 2)))
+wr = Window.partitionBy("exposure_id").orderBy(F.monotonic_increasing_id())
+risk = risk.withColumn("__rn", F.row_number().over(wr)).filter("__rn = 1").drop("__rn")
+goodr = risk.filter(F.col("exposure_id").isNotNull() & F.col("customer_id").isNotNull()
+                    & F.col("ead").isNotNull()
+                    & F.col("status").isin("ACTIVE", "MATURED", "DEFAULT"))
+goodr.write.mode("overwrite").saveAsTable(f"{catalog}.silver.risk_exposure")
+risk.subtract(goodr).write.mode("overwrite").saveAsTable(f"{catalog}.silver.risk_exposure_rejected")
 print("silver:", good.count(), "customers,", goodc.count(), "txns,",
-      goodp.count(), "payments,", goodl.count(), "loans,", gooda.count(), "accounts")
+      goodp.count(), "payments,", goodl.count(), "loans,",
+      gooda.count(), "accounts,", goodr.count(), "exposures")

@@ -1,0 +1,25 @@
+name: risk_exposure
+source: risk_exposure
+target_layer: silver
+target_table: risk_exposure
+primary_key: exposure_id
+columns:
+  - { name: exposure_id,   type: string }
+  - { name: customer_id,   type: string }
+  - { name: facility_id,   type: string }
+  - { name: exposure_type, type: string }
+  - { name: ccy,           type: string }
+  - { name: ead,           type: decimal }
+  - { name: pd,            type: double }
+  - { name: lgd,           type: double }
+  - { name: risk_weight,   type: double }
+  - { name: rating,        type: string }
+  - { name: limit_amount,  type: decimal }
+  - { name: as_of_date,    type: date }
+  - { name: status,        type: string }
+not_null: [exposure_id, customer_id, ead, status]
+allowed:
+  exposure_type: [LOAN, DEPOSIT, CARD, DERIVATIVE, COMMITMENT]
+  rating: [AAA, AA, A, BBB, BB, B, CCC, D]
+  status: [ACTIVE, MATURED, DEFAULT]
+pii: {}

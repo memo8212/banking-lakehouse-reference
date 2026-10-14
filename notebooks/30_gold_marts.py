@@ -98,4 +98,33 @@ accounts = spark.table(f"{catalog}.silver.accounts")
               F.round(F.sum("balance_base"), 2).alias("balance_base"))
          .orderBy("segment", "account_type")
          .write.mode("overwrite").saveAsTable(f"{catalog}.gold.deposits_by_segment"))
-display(spark.table(f"{catalog}.gold.account_balances"))
+
+# COMMAND ----------
+
+# MAGIC %md ## risk marts (exposure by rating, limit utilisation, by segment)
+risk = spark.table(f"{catalog}.silver.risk_exposure")
+el = F.round(F.col("pd") * F.col("lgd") * F.col("ead_base"), 2)
+
+(risk.groupBy("rating")
+     .agg(F.count("exposure_id").alias("exposures"),
+          F.round(F.sum("ead_base"), 2).alias("ead_base"),
+          F.round(F.sum(el), 2).alias("expected_loss"),
+          F.round(F.avg("pd"), 4).alias("avg_pd"))
+     .orderBy("rating")
+     .write.mode("overwrite").saveAsTable(f"{catalog}.gold.risk_exposure_by_rating"))
+
+(risk.groupBy("exposure_type")
+     .agg(F.round(F.sum("limit_base"), 2).alias("limit_base"),
+          F.round(F.sum("ead_base"), 2).alias("ead_base"))
+     .withColumn("utilisation", F.round(F.col("ead_base") / F.col("limit_base"), 4))
+     .orderBy("exposure_type")
+     .write.mode("overwrite").saveAsTable(f"{catalog}.gold.risk_limit_utilisation"))
+
+(risk.join(cust.select("customer_id", "segment"), "customer_id", "left")
+     .groupBy("segment")
+     .agg(F.round(F.sum("ead_base"), 2).alias("ead_base"),
+          F.round(F.sum(el), 2).alias("expected_loss"),
+          F.sum(F.when(F.col("status") == "DEFAULT", 1).otherwise(0)).alias("defaults"))
+     .orderBy("segment")
+     .write.mode("overwrite").saveAsTable(f"{catalog}.gold.risk_by_segment"))
+display(spark.table(f"{catalog}.gold.risk_exposure_by_rating"))

@@ -139,4 +139,24 @@ def conform(spark, env: Env, contracts: dict) -> dict:
                        .withColumn("available_base", F.round(F.col("available_balance") * F.col("fx_rate"), 2))
     accounts = _dedupe(accounts, ac.primary_key)
     _split_and_write(spark, env, accounts, ac, report)
+
+    # ---- risk_exposure ----
+    rx = contracts["risk_exposure"]
+    risk = (spark.read.format("delta").load(env.table("bronze", "risk_exposure"))
+            .withColumn("ead", F.col("ead").cast("double"))
+            .withColumn("pd", F.col("pd").cast("double"))
+            .withColumn("lgd", F.col("lgd").cast("double"))
+            .withColumn("risk_weight", F.col("risk_weight").cast("double"))
+            .withColumn("limit_amount", F.col("limit_amount").cast("double"))
+            .withColumn("as_of_date", F.to_date("as_of_date"))
+            .withColumn("status", F.upper(F.trim("status")))
+            .withColumn("exposure_type", F.upper(F.trim("exposure_type")))
+            .withColumn("rating", F.upper(F.trim("rating")))
+            .withColumn("ccy", F.upper(F.trim("ccy"))))
+    risk = _apply_pii(risk, rx)
+    risk = risk.join(fx.select("ccy", "fx_rate"), on="ccy", how="left") \
+               .withColumn("ead_base", F.round(F.col("ead") * F.col("fx_rate"), 2)) \
+               .withColumn("limit_base", F.round(F.col("limit_amount") * F.col("fx_rate"), 2))
+    risk = _dedupe(risk, rx.primary_key)
+    _split_and_write(spark, env, risk, rx, report)
     return report

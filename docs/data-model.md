@@ -46,6 +46,11 @@ extends to the full bank.
 `product_code`, `ccy`, `balance`, `available_balance`, `opened_date`, `status`,
 `branch`, `interest_rate`, `fx_rate`, `balance_base`, `available_base`.
 
+### `silver.risk_exposure` (contract: `risk_exposure.contract.yaml`)
+`exposure_id (PK)`, `customer_id`, `facility_id`, `exposure_type`, `ccy`, `ead`,
+`pd`, `lgd`, `risk_weight`, `rating`, `limit_amount`, `as_of_date`, `status`,
+`fx_rate`, `ead_base`, `limit_base`.
+
 ### `gold.customer_360`
 `customer_id`, `segment`, `country`, `kyc_status`, `total_spend`, `txn_count`,
 `last_txn_ts`, `total_balance`.
@@ -71,6 +76,15 @@ extends to the full bank.
 
 ### `gold.deposits_by_segment`
 `segment`, `account_type`, `accounts`, `balance_base`.
+
+### `gold.risk_exposure_by_rating`
+`rating`, `exposures`, `ead_base`, `expected_loss`, `avg_pd`.
+
+### `gold.risk_limit_utilisation`
+`exposure_type`, `limit_base`, `ead_base`, `utilisation`.
+
+### `gold.risk_by_segment`
+`segment`, `ead_base`, `expected_loss`, `defaults`.
 
 ## Relationships
 ```

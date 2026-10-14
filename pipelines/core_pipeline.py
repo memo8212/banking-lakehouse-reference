@@ -64,6 +64,15 @@ def bronze_accounts():
             .withColumn("_ingested_at", F.current_timestamp())
             .withColumn("_source_file", F.lit("accounts.csv")))
 
+@dp.table(name="bronze_risk_exposure", comment="raw risk exposure feed")
+def bronze_risk_exposure():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "csv").option("header", "true")
+            .option("cloudFiles.schemaLocation", f"{LANDING}/_schema/risk_exposure")
+            .load(f"{LANDING}/risk_exposure")
+            .withColumn("_ingested_at", F.current_timestamp())
+            .withColumn("_source_file", F.lit("risk_exposure.csv")))
+
 # COMMAND ----------
 
 # MAGIC %md ## Silver — conformed + masked + quality expectations
@@ -115,6 +124,16 @@ def silver_accounts():
             .withColumn("status", F.upper(F.trim("status")))
             .withColumn("account_type", F.upper(F.trim("account_type")))
             .withColumn("account_no", F.substring(F.sha2("account_no", 256), 1, 16)))
+
+@dp.table(name="silver_risk_exposure", comment="conformed risk exposures")
+@dp.expect_or_drop("valid_status", "status IN ('ACTIVE','MATURED','DEFAULT')")
+def silver_risk_exposure():
+    return (dp.read_stream("bronze_risk_exposure")
+            .withColumn("ead", F.col("ead").cast("double"))
+            .withColumn("pd", F.col("pd").cast("double"))
+            .withColumn("lgd", F.col("lgd").cast("double"))
+            .withColumn("status", F.upper(F.trim("status")))
+            .withColumn("rating", F.upper(F.trim("rating"))))
 
 # COMMAND ----------
 
@@ -188,3 +207,24 @@ def gold_deposits_by_segment():
             .groupBy("segment", "account_type")
             .agg(F.count("account_id").alias("accounts"),
                  F.round(F.sum("balance"), 2).alias("balance_base")))
+
+@dp.materialized_view(name="gold_risk_exposure_by_rating", comment="exposure by rating")
+def gold_risk_exposure_by_rating():
+    risk = dp.read("silver_risk_exposure")
+    el = F.round(F.col("pd") * F.col("lgd") * F.col("ead"), 2)
+    return (risk.groupBy("rating")
+            .agg(F.count("exposure_id").alias("exposures"),
+                 F.round(F.sum("ead"), 2).alias("ead_base"),
+                 F.round(F.sum(el), 2).alias("expected_loss"),
+                 F.round(F.avg("pd"), 4).alias("avg_pd")))
+
+@dp.materialized_view(name="gold_risk_by_segment", comment="exposure by segment")
+def gold_risk_by_segment():
+    cust = dp.read("silver_customer")
+    risk = dp.read("silver_risk_exposure")
+    el = F.round(F.col("pd") * F.col("lgd") * F.col("ead"), 2)
+    return (risk.join(cust.select("customer_id", "segment"), "customer_id", "left")
+            .groupBy("segment")
+            .agg(F.round(F.sum("ead"), 2).alias("ead_base"),
+                 F.round(F.sum(el), 2).alias("expected_loss"),
+                 F.sum(F.when(F.col("status") == "DEFAULT", 1).otherwise(0)).alias("defaults")))

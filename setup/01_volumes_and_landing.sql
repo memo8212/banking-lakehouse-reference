@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS bank_dev.bronze.accounts (
   opened_date STRING, status STRING, branch STRING, interest_rate STRING,
   _ingested_at TIMESTAMP, _source_file STRING);
 
+CREATE TABLE IF NOT EXISTS bank_dev.bronze.risk_exposure (
+  exposure_id STRING, customer_id STRING, facility_id STRING, exposure_type STRING,
+  ccy STRING, ead STRING, pd STRING, lgd STRING, risk_weight STRING, rating STRING,
+  limit_amount STRING, as_of_date STRING, status STRING,
+  _ingested_at TIMESTAMP, _source_file STRING);
+
 -- File registry (file-level lineage)
 CREATE TABLE IF NOT EXISTS bank_dev.bronze.file_registry (
   file_name STRING, path STRING, size BIGINT, md5 STRING, lines BIGINT);
@@ -80,6 +86,14 @@ CREATE TABLE IF NOT EXISTS bank_dev.silver.accounts (
   CONSTRAINT pk_accounts PRIMARY KEY (account_id))
   COMMENT 'contract accounts.contract.yaml';
 
+CREATE TABLE IF NOT EXISTS bank_dev.silver.risk_exposure (
+  exposure_id STRING NOT NULL, customer_id STRING, facility_id STRING,
+  exposure_type STRING, ccy STRING, ead DOUBLE, pd DOUBLE, lgd DOUBLE,
+  risk_weight DOUBLE, rating STRING, limit_amount DOUBLE, as_of_date DATE,
+  status STRING, fx_rate DOUBLE, ead_base DOUBLE, limit_base DOUBLE,
+  CONSTRAINT pk_risk_exposure PRIMARY KEY (exposure_id))
+  COMMENT 'contract risk_exposure.contract.yaml';
+
 -- Gold (domain marts)
 CREATE TABLE IF NOT EXISTS bank_dev.gold.customer_360 (
   customer_id STRING, segment STRING, country STRING, kyc_status STRING,
@@ -116,6 +130,19 @@ CREATE TABLE IF NOT EXISTS bank_dev.gold.account_balances (
 
 CREATE TABLE IF NOT EXISTS bank_dev.gold.deposits_by_segment (
   segment STRING, account_type STRING, accounts BIGINT, balance_base DECIMAL(18,2))
+  CLUSTER BY (segment);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.risk_exposure_by_rating (
+  rating STRING, exposures BIGINT, ead_base DECIMAL(18,2), expected_loss DECIMAL(18,2),
+  avg_pd DOUBLE)
+  CLUSTER BY (rating);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.risk_limit_utilisation (
+  exposure_type STRING, limit_base DECIMAL(18,2), ead_base DECIMAL(18,2), utilisation DOUBLE)
+  CLUSTER BY (exposure_type);
+
+CREATE TABLE IF NOT EXISTS bank_dev.gold.risk_by_segment (
+  segment STRING, ead_base DECIMAL(18,2), expected_loss DECIMAL(18,2), defaults BIGINT)
   CLUSTER BY (segment);
 
 SELECT 'landing + tables ready' AS status;

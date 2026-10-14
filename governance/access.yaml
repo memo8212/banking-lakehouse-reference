@@ -12,6 +12,8 @@ groups:
     - "SELECT ON TABLE bank_dev.gold.loan_portfolio"
     - "SELECT ON TABLE bank_dev.gold.account_balances"
     - "SELECT ON TABLE bank_dev.gold.deposits_by_segment"
+    - "SELECT ON TABLE bank_dev.gold.risk_exposure_by_rating"
+    - "SELECT ON TABLE bank_dev.gold.risk_limit_utilisation"
   dataops:
     - "USAGE ON CATALOG bank_dev"
     - "USE SCHEMA bank_dev.bronze"
@@ -27,6 +29,9 @@ tags:
   bank_dev.gold.loan_risk_by_segment: { domain: loans, layer: gold }
   bank_dev.gold.account_balances: { domain: accounts, layer: gold }
   bank_dev.gold.deposits_by_segment: { domain: accounts, layer: gold }
+  bank_dev.gold.risk_exposure_by_rating: { domain: risk, layer: gold }
+  bank_dev.gold.risk_limit_utilisation: { domain: risk, layer: gold }
+  bank_dev.gold.risk_by_segment: { domain: risk, layer: gold }
 
 retention:
   bank_dev.bronze.customer: "interval 2555 days"

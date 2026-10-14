@@ -9,7 +9,7 @@ from lakehouse.config import Env
 def reconcile(spark, env: Env) -> list[dict]:
     results: list[dict] = []
 
-    for name in ("customer", "cards_txn", "payments", "loans", "accounts"):
+    for name in ("customer", "cards_txn", "payments", "loans", "accounts", "risk_exposure"):
         src = spark.read.option("header", True).csv(f"{env.source_dir}/{name}.csv").count()
         brz = spark.read.format("delta").load(env.table("bronze", name)).count()
         results.append({"check": f"{name}: source vs bronze row-count",
@@ -56,6 +56,16 @@ def reconcile(spark, env: Env) -> list[dict]:
     results.append({"check": "gold account_balances vs silver balance_base",
                     "status": "PASSED" if aok else "FAILED",
                     "expected": round(float(asum), 2), "actual": round(float(agsum), 2)})
+
+    # risk: gold risk_exposure_by_rating ead vs silver ead
+    risk_silver = spark.read.format("delta").load(env.table("silver", "risk_exposure"))
+    risk_gold = spark.read.format("delta").load(env.table("gold", "risk_exposure_by_rating"))
+    rs = risk_silver.agg(F.coalesce(F.sum("ead_base"), F.lit(0.0))).first()[0]
+    rg = risk_gold.agg(F.coalesce(F.sum("ead_base"), F.lit(0.0))).first()[0]
+    rok = abs(float(rs) - float(rg)) < 0.01
+    results.append({"check": "gold risk_exposure_by_rating vs silver ead_base",
+                    "status": "PASSED" if rok else "FAILED",
+                    "expected": round(float(rs), 2), "actual": round(float(rg), 2)})
 
     results.append({"check": "silver customer rejects (<=5% tolerance)",
                     "status": "PASSED", "expected": "n/a",

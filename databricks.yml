@@ -24,6 +24,12 @@ targets:
     mode: development
     workspace:
       host: ${DATABRICKS_HOST}
+  uat:
+    mode: production
+    workspace:
+      host: ${DATABRICKS_HOST_UAT}
+    run_as:
+      service_principal_name: ${DATABRICKS_SP_NAME}
   prod:
     mode: production
     workspace:
